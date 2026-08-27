@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+html,
+body {
+  height: 100%;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+#next {
+  height: 100%;
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+
+/* Selection highlight for reading words */
+.reading-word {
+  cursor: pointer;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  padding: 0 0.1rem;
+  margin: 0 -0.1rem;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.reading-word:active {
+  background-color: rgba(59, 130, 246, 0.3);
+}
+
+.reading-word.active {
+  background-color: rgba(59, 130, 246, 0.5);
+  color: #eff6ff;
+}
+
+/* Prevent text selection while swiping to read */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Long press indicator */
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.long-press-target {
+  animation: pulse-ring 0.8s ease-out forwards;
+}
