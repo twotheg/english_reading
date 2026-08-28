@@ -1,4 +1,4 @@
-const CACHE_NAME = "engread-v1";
+const CACHE_NAME = "engread-v2";
 const STATIC_ASSETS = [
   "/",
   "/manifest.json",
