@@ -13,11 +13,19 @@ interface Token {
   text: string;
   word?: string;
   index?: number;
+  start?: number;
+}
+
+interface Sentence {
+  text: string;
+  start: number;
 }
 
 interface ReadingViewProps {
   passage: PassageDetail;
 }
+
+const SPEED_OPTIONS = [0.6, 0.75, 0.9, 1, 1.25, 1.5];
 
 function tokenize(text: string): Token[] {
   const tokens: Token[] = [];
@@ -31,15 +39,32 @@ function tokenize(text: string): Token[] {
         text: match[1],
         word: normalizeWord(match[1]),
         index: wordIndex++,
+        start: match.index,
       });
     } else if (match[2]) {
       tokens.push({
         type: match[2].trim() === "" ? "space" : "punctuation",
         text: match[2],
+        start: match.index,
       });
     }
   }
   return tokens;
+}
+
+// Split the passage into sentences while keeping each sentence's exact
+// character offset in the original text, so word-boundary events (which
+// report a charIndex relative to the sentence) can be mapped back to the
+// original word tokens.
+function splitSentences(text: string): Sentence[] {
+  const sentences: Sentence[] = [];
+  const regex = /[^.!?]+(?:[.!?]+|$)\s*/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    if (match[0].trim().length === 0) continue;
+    sentences.push({ text: match[0], start: match.index });
+  }
+  return sentences.length ? sentences : [{ text, start: 0 }];
 }
 
 function speak(text: string, rate = 0.9) {
@@ -71,22 +96,45 @@ export function ReadingView({ passage }: ReadingViewProps) {
     () => tokens.filter((t) => t.type === "word"),
     [tokens]
   );
+  const sentences = useMemo(
+    () => splitSentences(passage.content),
+    [passage.content]
+  );
+
+  // Maps a word's character start offset (in the original passage text) to
+  // its token index, so we can find which word is being spoken from a
+  // SpeechSynthesis boundary event.
+  const startToTokenIndex = useMemo(() => {
+    const map = new Map<number, number>();
+    wordTokens.forEach((t) => {
+      if (t.start !== undefined && t.index !== undefined) {
+        map.set(t.start, t.index);
+      }
+    });
+    return map;
+  }, [wordTokens]);
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [popup, setPopup] = useState<WordDefinition | null>(null);
   const [popupLoading, setPopupLoading] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(0.9);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<number | null>(null);
   const currentWordRef = useRef<string | null>(null);
   const isDraggingRef = useRef(false);
   const autoPlayRef = useRef(false);
-  const autoIndexRef = useRef(0);
+  const autoSentenceIndexRef = useRef(0);
+  const playbackRateRef = useRef(0.9);
 
   useEffect(() => {
     autoPlayRef.current = autoPlay;
   }, [autoPlay]);
+
+  useEffect(() => {
+    playbackRateRef.current = playbackRate;
+  }, [playbackRate]);
 
   const saveReadingProgress = useCallback(
     (index: number, completed = false) => {
@@ -138,7 +186,7 @@ export function ReadingView({ passage }: ReadingViewProps) {
       if (currentWordRef.current === word) return;
       currentWordRef.current = word;
       setActiveIndex(index);
-      speak(word, 0.95);
+      speak(word, playbackRateRef.current);
       clearLongPress();
     },
     [clearLongPress]
@@ -201,7 +249,7 @@ export function ReadingView({ passage }: ReadingViewProps) {
       e.stopPropagation();
       if (isDraggingRef.current) return;
       setActiveIndex(index);
-      speak(word, 0.95);
+      speak(word, playbackRateRef.current);
       saveReadingProgress(index);
     },
     [saveReadingProgress]
@@ -214,7 +262,10 @@ export function ReadingView({ passage }: ReadingViewProps) {
     };
   }, [clearLongPress]);
 
-  // Auto play through words
+  // Auto play: read one full sentence at a time (natural prosody) while
+  // highlighting the currently-spoken word via the browser's word-boundary
+  // event. This avoids the robotic, word-by-word sound of speaking each
+  // word as a separate utterance.
   useEffect(() => {
     if (!autoPlay) {
       stopSpeaking();
@@ -222,55 +273,80 @@ export function ReadingView({ passage }: ReadingViewProps) {
     }
 
     let cancelled = false;
-    async function playLoop() {
-      while (autoPlayRef.current && !cancelled) {
-        const idx = autoIndexRef.current;
-        const token = wordTokens[idx];
-        if (!token || !token.word) {
-          setAutoPlay(false);
-          saveReadingProgress(wordTokens.length - 1, true);
+
+    function playSentence(sentence: Sentence): Promise<void> {
+      return new Promise((resolve) => {
+        if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+          resolve();
           return;
         }
-        setActiveIndex(token.index!);
-        currentWordRef.current = token.word;
-        await new Promise<void>((resolve) => {
-          const utterance = speak(token.word!, 0.9);
-          if (!utterance) {
-            resolve();
-            return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(sentence.text);
+        utterance.lang = "en-US";
+        utterance.rate = playbackRateRef.current;
+        utterance.pitch = 1;
+
+        utterance.onboundary = (event) => {
+          if (event.name && event.name !== "word") return;
+          const absoluteIndex = sentence.start + event.charIndex;
+          const tokenIndex = startToTokenIndex.get(absoluteIndex);
+          if (tokenIndex !== undefined) {
+            setActiveIndex(tokenIndex);
+            saveReadingProgress(tokenIndex);
           }
-          utterance.onend = () => resolve();
-          utterance.onerror = () => resolve();
-          setTimeout(() => resolve(), 2000);
-        });
-        autoIndexRef.current = idx + 1;
-        saveReadingProgress(token.index!);
+        };
+        utterance.onend = () => resolve();
+        utterance.onerror = () => resolve();
+        window.speechSynthesis.speak(utterance);
+      });
+    }
+
+    async function playLoop() {
+      let idx = autoSentenceIndexRef.current;
+      while (autoPlayRef.current && !cancelled && idx < sentences.length) {
+        await playSentence(sentences[idx]);
+        idx += 1;
+        autoSentenceIndexRef.current = idx;
+      }
+      if (!cancelled && idx >= sentences.length) {
+        setAutoPlay(false);
+        saveReadingProgress(wordTokens.length - 1, true);
       }
     }
+
     playLoop();
     return () => {
       cancelled = true;
+      stopSpeaking();
     };
-  }, [autoPlay, wordTokens, saveReadingProgress]);
+  }, [autoPlay, sentences, startToTokenIndex, saveReadingProgress, wordTokens.length]);
 
   const toggleAutoPlay = useCallback(() => {
     if (autoPlay) {
       setAutoPlay(false);
       stopSpeaking();
     } else {
-      autoIndexRef.current =
-        activeIndex !== null
-          ? wordTokens.findIndex((t) => t.index === activeIndex)
-          : 0;
-      if (autoIndexRef.current < 0) autoIndexRef.current = 0;
+      let startSentence = 0;
+      if (activeIndex !== null) {
+        const activeToken = wordTokens.find((t) => t.index === activeIndex);
+        if (activeToken && activeToken.start !== undefined) {
+          const found = sentences.findIndex(
+            (s) =>
+              activeToken.start! >= s.start &&
+              activeToken.start! < s.start + s.text.length
+          );
+          if (found >= 0) startSentence = found;
+        }
+      }
+      autoSentenceIndexRef.current = startSentence;
       setAutoPlay(true);
     }
-  }, [autoPlay, activeIndex, wordTokens]);
+  }, [autoPlay, activeIndex, wordTokens, sentences]);
 
   return (
     <div className="flex h-full flex-col">
       <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p
               className="text-xs font-semibold uppercase tracking-wide"
@@ -282,10 +358,24 @@ export function ReadingView({ passage }: ReadingViewProps) {
               {passage.title}
             </h1>
           </div>
+
+          <select
+            value={playbackRate}
+            onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
+            aria-label="Reading speed"
+            className="shrink-0 rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs font-medium text-slate-200"
+          >
+            {SPEED_OPTIONS.map((rate) => (
+              <option key={rate} value={rate}>
+                {rate.toFixed(2).replace(/0$/, "").replace(/\.$/, ".0")}x
+              </option>
+            ))}
+          </select>
+
           <button
             onClick={toggleAutoPlay}
             className={cn(
-              "ml-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors",
               autoPlay
                 ? "bg-blue-600 text-white"
                 : "bg-slate-800 text-slate-300"
@@ -351,7 +441,7 @@ export function ReadingView({ passage }: ReadingViewProps) {
         definition={popup}
         loading={popupLoading}
         onClose={() => setPopup(null)}
-        onPlay={() => popup && speak(popup.word)}
+        onPlay={() => popup && speak(popup.word, playbackRateRef.current)}
       />
     </div>
   );
