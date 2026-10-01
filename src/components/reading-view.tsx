@@ -89,7 +89,11 @@ function vibrate(pattern: number | number[] = 15) {
 
 export function ReadingView({ passage }: ReadingViewProps) {
   const router = useRouter();
+  
+  // 제목 정제 및 이미지 파일명 자동 생성 로직
   const cleanTitle = passage.title.replace(/^\d+\.\s*/, '');
+  // 정제된 제목을 소문자로 바꾸고, 알파벳/숫자가 아닌 것은 짝대기(-)로 치환하여 .jpg를 붙임
+  const imageFilename = cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.jpg';
 
   const tokens = useMemo(() => tokenize(passage.content), [passage.content]);
   const wordTokens = useMemo(
@@ -127,6 +131,9 @@ export function ReadingView({ passage }: ReadingViewProps) {
   const [popupLoading, setPopupLoading] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(0.9);
+  
+  // 이미지를 찾지 못했을 때를 대비한 에러 상태값
+  const [imageError, setImageError] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const sentenceRefs = useRef<(HTMLSpanElement | null)[]>([]);
@@ -296,7 +303,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
         }
         window.speechSynthesis.cancel();
         
-        // [해결 1] 재생이 시작되면, 브라우저 신호를 기다리지 않고 무조건 문장의 첫 단어를 하이라이트!
         const firstToken = wordTokens.find(t => t.start !== undefined && t.start >= sentence.start);
         if (firstToken?.index !== undefined) {
           setActiveIndex(firstToken.index);
@@ -311,7 +317,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
           if (event.name && event.name !== "word") return;
           const absoluteIndex = sentence.start + event.charIndex;
           
-          // [해결 2] 오차가 발생하더라도 글자가 속한 단어 범위를 넓게 찾아냄
           const token = wordTokens.find(
             (t) => t.start !== undefined && 
                    absoluteIndex >= t.start && 
@@ -432,12 +437,26 @@ export function ReadingView({ passage }: ReadingViewProps) {
       >
         <article className="mx-auto max-w-2xl text-lg leading-loose text-slate-200">
           
-         {passage.levelName.toLowerCase() === 'beginner' && (
-  <div className="w-full h-48 bg-slate-800/50 rounded-xl mb-6 flex flex-col items-center justify-center text-slate-500 border border-slate-700/50">
-     <ImageIcon className="w-10 h-10 mb-2 opacity-50" />
-     <span className="text-sm font-medium">Story Image Space</span>
-  </div>
-)}
+          {/* Beginner 레벨일 때만 이미지 영역 노출 */}
+          {passage.levelName.toLowerCase() === 'beginner' && (
+            <div className="w-full h-48 sm:h-64 bg-slate-800/50 rounded-xl mb-6 flex flex-col items-center justify-center text-slate-500 border border-slate-700/50 overflow-hidden relative">
+              {!imageError ? (
+                /* 이미지를 정상적으로 찾았을 때 */
+                <img
+                  src={`/images/${imageFilename}`}
+                  alt={cleanTitle}
+                  className="w-full h-full object-cover"
+                  onError={() => setImageError(true)} // 이미지가 없으면 에러 상태를 true로 변경
+                />
+              ) : (
+                /* 이미지가 아직 없거나 에러가 났을 때 보여주는 기존 Placeholder */
+                <>
+                  <ImageIcon className="w-10 h-10 mb-2 opacity-50" />
+                  <span className="text-sm font-medium">Story Image Space</span>
+                </>
+              )}
+            </div>
+          )}
 
           {sentenceTokens.map((sTokens, sIdx) => {
             const isActiveSentence = sIdx === activeSentenceIndex;
