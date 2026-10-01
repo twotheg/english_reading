@@ -97,6 +97,16 @@ export function ReadingView({ passage }: ReadingViewProps) {
     [passage.content]
   );
 
+  // 문장별로 토큰(단어)들을 그룹화합니다.
+  const sentenceTokens = useMemo(() => {
+    return sentences.map((s) => {
+      const sEnd = s.start + s.text.length;
+      return tokens.filter(
+        (t) => t.start !== undefined && t.start >= s.start && t.start < sEnd
+      );
+    });
+  }, [sentences, tokens]);
+
   const startToTokenIndex = useMemo(() => {
     const map = new Map<number, number>();
     wordTokens.forEach((t) => {
@@ -108,21 +118,32 @@ export function ReadingView({ passage }: ReadingViewProps) {
   }, [wordTokens]);
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  
+  // 현재 읽고 있는 단어가 속한 문장의 인덱스를 찾습니다.
+  const activeSentenceIndex = useMemo(() => {
+    if (activeIndex === null) return null;
+    const activeToken = wordTokens.find((t) => t.index === activeIndex);
+    if (!activeToken || activeToken.start === undefined) return null;
+    return sentences.findIndex(
+      (s) =>
+        activeToken.start! >= s.start &&
+        activeToken.start! < s.start + s.text.length
+    );
+  }, [activeIndex, wordTokens, sentences]);
+
   const [popup, setPopup] = useState<WordDefinition | null>(null);
   const [popupLoading, setPopupLoading] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(0.9);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const sentenceRefs = useRef<(HTMLSpanElement | null)[]>([]); // 문장 위치 기억용
   const longPressTimer = useRef<number | null>(null);
   const currentWordRef = useRef<string | null>(null);
   const isDraggingRef = useRef(false);
   const autoPlayRef = useRef(false);
   const autoSentenceIndexRef = useRef(0);
   const playbackRateRef = useRef(0.9);
-
-  // [추가된 부분] 단어 요소들을 저장할 ref 배열
-  const wordElementsRef = useRef<(HTMLSpanElement | null)[]>([]);
 
   useEffect(() => {
     autoPlayRef.current = autoPlay;
@@ -132,15 +153,15 @@ export function ReadingView({ passage }: ReadingViewProps) {
     playbackRateRef.current = playbackRate;
   }, [playbackRate]);
 
-  // [추가된 부분] activeIndex가 변경될 때 화면 중앙으로 자동 스크롤
+  // 문장이 넘어갈 때 화면 중앙으로 자동 스크롤
   useEffect(() => {
-    if (activeIndex !== null && wordElementsRef.current[activeIndex]) {
-      wordElementsRef.current[activeIndex]?.scrollIntoView({
+    if (activeSentenceIndex !== null && sentenceRefs.current[activeSentenceIndex]) {
+      sentenceRefs.current[activeSentenceIndex]?.scrollIntoView({
         behavior: "smooth",
-        block: "center", // 항상 화면 중앙에 위치하도록 설정
+        block: "center",
       });
     }
-  }, [activeIndex]);
+  }, [activeSentenceIndex]);
 
   const saveReadingProgress = useCallback(
     (index: number, completed = false) => {
@@ -346,7 +367,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
   }, [autoPlay, activeIndex, wordTokens, sentences]);
 
   return (
-    // [수정된 부분] pb-20을 주어 맨 아래 글씨가 광고에 가려지지 않게 함
     <div className="flex flex-col h-[calc(100vh-60px)] pb-20">
       <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
@@ -379,17 +399,11 @@ export function ReadingView({ passage }: ReadingViewProps) {
             onClick={toggleAutoPlay}
             className={cn(
               "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors",
-              autoPlay
-                ? "bg-blue-600 text-white"
-                : "bg-slate-800 text-slate-300"
+              autoPlay ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300"
             )}
             aria-label={autoPlay ? "Pause" : "Auto play"}
           >
-            {autoPlay ? (
-              <Pause className="h-5 w-5" />
-            ) : (
-              <Play className="h-5 w-5" />
-            )}
+            {autoPlay ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           </button>
         </div>
       </header>
@@ -404,36 +418,48 @@ export function ReadingView({ passage }: ReadingViewProps) {
         onPointerCancel={handlePointerUp}
       >
         <article className="mx-auto max-w-2xl text-lg leading-loose text-slate-200">
-          {tokens.map((token, i) => {
-            if (token.type !== "word") {
-              return (
-                <span key={i} className="text-slate-400">
-                  {token.text}
-                </span>
-              );
-            }
-            const isActive = activeIndex === token.index;
+          {/* 문장 단위로 화면에 뿌려줍니다 */}
+          {sentenceTokens.map((sTokens, sIdx) => {
+            const isActiveSentence = sIdx === activeSentenceIndex;
             return (
               <span
-                key={i}
-                // [추가된 부분] 현재 단어의 위치를 기억하기 위해 ref 연결
+                key={sIdx}
                 ref={(el) => {
-                  if (token.index !== undefined) {
-                    wordElementsRef.current[token.index] = el;
-                  }
+                  sentenceRefs.current[sIdx] = el;
                 }}
-                data-word={token.word}
-                data-index={token.index}
-                onClick={(e) =>
-                  token.word && handleWordClick(e, token.word, token.index!)
-                }
                 className={cn(
-                  "reading-word inline transition-colors duration-200",
-                  // [수정된 부분] 현재 읽는 단어 색상 눈에 띄게 변경 (파란 배경, 흰 글씨)
-                  isActive && "bg-blue-500 text-white rounded px-1 active" 
+                  "transition-all duration-300 inline rounded-xl px-1",
+                  // 사진처럼 현재 문장 전체에 둥근 회색 배경을 씌웁니다
+                  isActiveSentence ? "bg-slate-600/60 shadow-md text-white py-1 my-1 block" : ""
                 )}
               >
-                {token.text}
+                {sTokens.map((token, i) => {
+                  if (token.type !== "word") {
+                    return (
+                      <span key={i} className="text-slate-400">
+                        {token.text}
+                      </span>
+                    );
+                  }
+                  const isActiveWord = activeIndex === token.index;
+                  return (
+                    <span
+                      key={i}
+                      data-word={token.word}
+                      data-index={token.index}
+                      onClick={(e) =>
+                        token.word && handleWordClick(e, token.word, token.index!)
+                      }
+                      className={cn(
+                        "reading-word inline transition-colors duration-200 cursor-pointer",
+                        // 현재 읽는 단어는 하늘색 글씨로 포인트만 줍니다
+                        isActiveWord && "text-blue-300 font-bold"
+                      )}
+                    >
+                      {token.text}
+                    </span>
+                  );
+                })}
               </span>
             );
           })}
