@@ -432,10 +432,12 @@ export function ReadingView({ passage }: ReadingViewProps) {
       >
         <article className="mx-auto max-w-2xl text-lg leading-loose text-slate-200">
           
-          <div className="w-full h-48 bg-slate-800/50 rounded-xl mb-6 flex flex-col items-center justify-center text-slate-500 border border-slate-700/50">
-             <ImageIcon className="w-10 h-10 mb-2 opacity-50" />
-             <span className="text-sm font-medium">Story Image Space</span>
-          </div>
+         {passage.levelName.toLowerCase() === 'beginner' && (
+  <div className="w-full h-48 bg-slate-800/50 rounded-xl mb-6 flex flex-col items-center justify-center text-slate-500 border border-slate-700/50">
+     <ImageIcon className="w-10 h-10 mb-2 opacity-50" />
+     <span className="text-sm font-medium">Story Image Space</span>
+  </div>
+)}
 
           {sentenceTokens.map((sTokens, sIdx) => {
             const isActiveSentence = sIdx === activeSentenceIndex;
