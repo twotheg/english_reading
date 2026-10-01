@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+// 뒤로가기 기능을 위해 useRouter를 추가로 임포트합니다.
+import { useRouter } from "next/navigation"; 
 import type { PassageDetail, WordDefinition } from "@/lib/types";
 import { normalizeWord, cn } from "@/lib/utils";
 import { fetchDefinition } from "@/lib/api";
 import { cacheDefinition, getCachedDefinition, saveProgress } from "@/lib/cache";
 import { WordPopup } from "./word-popup";
-import { Play, Pause, Volume2 } from "lucide-react";
+// 뒤로가기 아이콘(ArrowLeft)과 이미지 아이콘을 추가합니다.
+import { Play, Pause, Volume2, ArrowLeft, Image as ImageIcon } from "lucide-react";
 
 interface Token {
   type: "word" | "punctuation" | "space";
@@ -87,6 +90,12 @@ function vibrate(pattern: number | number[] = 15) {
 }
 
 export function ReadingView({ passage }: ReadingViewProps) {
+  // 뒤로가기를 위한 router 객체 생성
+  const router = useRouter();
+
+  // 제목에서 맨 앞의 "숫자. " 형식 제거 (예: "1. The Three Little Pigs" -> "The Three Little Pigs")
+  const cleanTitle = passage.title.replace(/^\d+\.\s*/, '');
+
   const tokens = useMemo(() => tokenize(passage.content), [passage.content]);
   const wordTokens = useMemo(
     () => tokens.filter((t) => t.type === "word"),
@@ -97,7 +106,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
     [passage.content]
   );
 
-  // 문장별로 토큰(단어)들을 그룹화합니다.
   const sentenceTokens = useMemo(() => {
     return sentences.map((s) => {
       const sEnd = s.start + s.text.length;
@@ -119,7 +127,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   
-  // 현재 읽고 있는 단어가 속한 문장의 인덱스를 찾습니다.
   const activeSentenceIndex = useMemo(() => {
     if (activeIndex === null) return null;
     const activeToken = wordTokens.find((t) => t.index === activeIndex);
@@ -137,7 +144,7 @@ export function ReadingView({ passage }: ReadingViewProps) {
   const [playbackRate, setPlaybackRate] = useState(0.9);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const sentenceRefs = useRef<(HTMLSpanElement | null)[]>([]); // 문장 위치 기억용
+  const sentenceRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const longPressTimer = useRef<number | null>(null);
   const currentWordRef = useRef<string | null>(null);
   const isDraggingRef = useRef(false);
@@ -153,12 +160,12 @@ export function ReadingView({ passage }: ReadingViewProps) {
     playbackRateRef.current = playbackRate;
   }, [playbackRate]);
 
-  // 문장이 넘어갈 때 화면 중앙으로 자동 스크롤
+  // 스크롤 로직 개선: 중앙(center) 정렬로 부드럽게 따라가도록 설정
   useEffect(() => {
     if (activeSentenceIndex !== null && sentenceRefs.current[activeSentenceIndex]) {
       sentenceRefs.current[activeSentenceIndex]?.scrollIntoView({
         behavior: "smooth",
-        block: "center",
+        block: "center", // 문장이 화면 중앙에 오도록 유지
       });
     }
   }, [activeSentenceIndex]);
@@ -369,7 +376,16 @@ export function ReadingView({ passage }: ReadingViewProps) {
   return (
     <div className="flex flex-col h-[calc(100vh-60px)] pb-20">
       <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-2xl items-center gap-3">
+          {/* 뒤로가기 버튼 추가 */}
+          <button 
+            onClick={() => router.back()} 
+            className="p-2 -ml-2 rounded-full hover:bg-slate-800 text-slate-300 transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+
           <div className="min-w-0 flex-1">
             <p
               className="text-xs font-semibold uppercase tracking-wide"
@@ -377,8 +393,9 @@ export function ReadingView({ passage }: ReadingViewProps) {
             >
               {passage.levelName}
             </p>
+            {/* 정제된 제목 표시 (숫자 제거) */}
             <h1 className="truncate text-lg font-bold text-slate-50">
-              {passage.title}
+              {cleanTitle}
             </h1>
           </div>
 
@@ -418,7 +435,14 @@ export function ReadingView({ passage }: ReadingViewProps) {
         onPointerCancel={handlePointerUp}
       >
         <article className="mx-auto max-w-2xl text-lg leading-loose text-slate-200">
-          {/* 문장 단위로 화면에 뿌려줍니다 */}
+          
+          {/* 이미지 자리(Placeholder) 추가: 추후 실제 이미지를 넣을 수 있는 공간 */}
+          <div className="w-full h-48 bg-slate-800/50 rounded-xl mb-6 flex flex-col items-center justify-center text-slate-500 border border-slate-700/50">
+             <ImageIcon className="w-10 h-10 mb-2 opacity-50" />
+             <span className="text-sm font-medium">Story Image Space</span>
+          </div>
+
+          {/* 문장 렌더링 부분 */}
           {sentenceTokens.map((sTokens, sIdx) => {
             const isActiveSentence = sIdx === activeSentenceIndex;
             return (
@@ -428,15 +452,15 @@ export function ReadingView({ passage }: ReadingViewProps) {
                   sentenceRefs.current[sIdx] = el;
                 }}
                 className={cn(
-                  "transition-all duration-300 inline rounded-xl px-1",
-                  // 사진처럼 현재 문장 전체에 둥근 회색 배경을 씌웁니다
-                  isActiveSentence ? "bg-slate-600/60 shadow-md text-white py-1 my-1 block" : ""
+                  "transition-all duration-300 inline rounded-lg px-2",
+                  // 현재 문장 전체에 눈에 띄는 회색 배경 박스 적용
+                  isActiveSentence ? "bg-slate-700 shadow-md text-white py-1 my-1 block" : ""
                 )}
               >
                 {sTokens.map((token, i) => {
                   if (token.type !== "word") {
                     return (
-                      <span key={i} className="text-slate-400">
+                      <span key={i} className={cn("text-slate-400", isActiveSentence && "text-slate-300")}>
                         {token.text}
                       </span>
                     );
@@ -452,8 +476,8 @@ export function ReadingView({ passage }: ReadingViewProps) {
                       }
                       className={cn(
                         "reading-word inline transition-colors duration-200 cursor-pointer",
-                        // 현재 읽는 단어는 하늘색 글씨로 포인트만 줍니다
-                        isActiveWord && "text-blue-300 font-bold"
+                        // 읽고 있는 단어를 파란색과 볼드체로 강조
+                        isActiveWord && "text-blue-400 font-bold" 
                       )}
                     >
                       {token.text}
