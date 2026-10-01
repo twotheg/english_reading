@@ -33,9 +33,18 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko">
-      <body className="bg-slate-950 text-slate-100 antialiased overscroll-none">
+      {/* overscroll-none을 유지하면서 하단 광고(60px)를 위한 여백 설정 */}
+      <body className="bg-slate-950 text-slate-100 antialiased overscroll-none pb-[60px]">
         <ServiceWorkerRegister />
+        
+        {/* 메인 콘텐츠 영역 */}
         {children}
+
+        {/* [추가된 부분] 앱 하단에 항상 고정되는 AdMob 광고 영역 */}
+        <div className="fixed bottom-0 left-0 w-full h-[60px] bg-slate-900 border-t border-slate-800 flex items-center justify-center z-50">
+          <p className="text-xs text-slate-500 font-medium">AdMob Banner (320x50)</p>
+          {/* 앱으로 출시할 때 실제 광고 스크립트나 네이티브 뷰가 들어갈 자리입니다. */}
+        </div>
       </body>
     </html>
   );
