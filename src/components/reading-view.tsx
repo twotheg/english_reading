@@ -52,10 +52,6 @@ function tokenize(text: string): Token[] {
   return tokens;
 }
 
-// Split the passage into sentences while keeping each sentence's exact
-// character offset in the original text, so word-boundary events (which
-// report a charIndex relative to the sentence) can be mapped back to the
-// original word tokens.
 function splitSentences(text: string): Sentence[] {
   const sentences: Sentence[] = [];
   const regex = /[^.!?]+(?:[.!?]+|$)\s*/g;
@@ -101,9 +97,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
     [passage.content]
   );
 
-  // Maps a word's character start offset (in the original passage text) to
-  // its token index, so we can find which word is being spoken from a
-  // SpeechSynthesis boundary event.
   const startToTokenIndex = useMemo(() => {
     const map = new Map<number, number>();
     wordTokens.forEach((t) => {
@@ -128,6 +121,9 @@ export function ReadingView({ passage }: ReadingViewProps) {
   const autoSentenceIndexRef = useRef(0);
   const playbackRateRef = useRef(0.9);
 
+  // [추가된 부분] 단어 요소들을 저장할 ref 배열
+  const wordElementsRef = useRef<(HTMLSpanElement | null)[]>([]);
+
   useEffect(() => {
     autoPlayRef.current = autoPlay;
   }, [autoPlay]);
@@ -135,6 +131,16 @@ export function ReadingView({ passage }: ReadingViewProps) {
   useEffect(() => {
     playbackRateRef.current = playbackRate;
   }, [playbackRate]);
+
+  // [추가된 부분] activeIndex가 변경될 때 화면 중앙으로 자동 스크롤
+  useEffect(() => {
+    if (activeIndex !== null && wordElementsRef.current[activeIndex]) {
+      wordElementsRef.current[activeIndex]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center", // 항상 화면 중앙에 위치하도록 설정
+      });
+    }
+  }, [activeIndex]);
 
   const saveReadingProgress = useCallback(
     (index: number, completed = false) => {
@@ -262,10 +268,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
     };
   }, [clearLongPress]);
 
-  // Auto play: read one full sentence at a time (natural prosody) while
-  // highlighting the currently-spoken word via the browser's word-boundary
-  // event. This avoids the robotic, word-by-word sound of speaking each
-  // word as a separate utterance.
   useEffect(() => {
     if (!autoPlay) {
       stopSpeaking();
@@ -344,7 +346,8 @@ export function ReadingView({ passage }: ReadingViewProps) {
   }, [autoPlay, activeIndex, wordTokens, sentences]);
 
   return (
-    <div className="flex h-full flex-col">
+    // [수정된 부분] pb-20을 주어 맨 아래 글씨가 광고에 가려지지 않게 함
+    <div className="flex flex-col h-[calc(100vh-60px)] pb-20">
       <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -393,7 +396,7 @@ export function ReadingView({ passage }: ReadingViewProps) {
 
       <div
         ref={containerRef}
-        className="no-select flex-1 overflow-y-auto px-5 py-6"
+        className="no-select flex-1 overflow-y-auto px-5 py-6 scroll-smooth"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -413,14 +416,21 @@ export function ReadingView({ passage }: ReadingViewProps) {
             return (
               <span
                 key={i}
+                // [추가된 부분] 현재 단어의 위치를 기억하기 위해 ref 연결
+                ref={(el) => {
+                  if (token.index !== undefined) {
+                    wordElementsRef.current[token.index] = el;
+                  }
+                }}
                 data-word={token.word}
                 data-index={token.index}
                 onClick={(e) =>
                   token.word && handleWordClick(e, token.word, token.index!)
                 }
                 className={cn(
-                  "reading-word inline",
-                  isActive && "active rounded"
+                  "reading-word inline transition-colors duration-200",
+                  // [수정된 부분] 현재 읽는 단어 색상 눈에 띄게 변경 (파란 배경, 흰 글씨)
+                  isActive && "bg-blue-500 text-white rounded px-1 active" 
                 )}
               >
                 {token.text}
