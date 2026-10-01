@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-// 뒤로가기 기능을 위해 useRouter를 추가로 임포트합니다.
 import { useRouter } from "next/navigation"; 
 import type { PassageDetail, WordDefinition } from "@/lib/types";
 import { normalizeWord, cn } from "@/lib/utils";
 import { fetchDefinition } from "@/lib/api";
 import { cacheDefinition, getCachedDefinition, saveProgress } from "@/lib/cache";
 import { WordPopup } from "./word-popup";
-// 뒤로가기 아이콘(ArrowLeft)과 이미지 아이콘을 추가합니다.
 import { Play, Pause, Volume2, ArrowLeft, Image as ImageIcon } from "lucide-react";
 
 interface Token {
@@ -90,10 +88,7 @@ function vibrate(pattern: number | number[] = 15) {
 }
 
 export function ReadingView({ passage }: ReadingViewProps) {
-  // 뒤로가기를 위한 router 객체 생성
   const router = useRouter();
-
-  // 제목에서 맨 앞의 "숫자. " 형식 제거 (예: "1. The Three Little Pigs" -> "The Three Little Pigs")
   const cleanTitle = passage.title.replace(/^\d+\.\s*/, '');
 
   const tokens = useMemo(() => tokenize(passage.content), [passage.content]);
@@ -114,16 +109,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
       );
     });
   }, [sentences, tokens]);
-
-  const startToTokenIndex = useMemo(() => {
-    const map = new Map<number, number>();
-    wordTokens.forEach((t) => {
-      if (t.start !== undefined && t.index !== undefined) {
-        map.set(t.start, t.index);
-      }
-    });
-    return map;
-  }, [wordTokens]);
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   
@@ -160,12 +145,11 @@ export function ReadingView({ passage }: ReadingViewProps) {
     playbackRateRef.current = playbackRate;
   }, [playbackRate]);
 
-  // 스크롤 로직 개선: 중앙(center) 정렬로 부드럽게 따라가도록 설정
   useEffect(() => {
     if (activeSentenceIndex !== null && sentenceRefs.current[activeSentenceIndex]) {
       sentenceRefs.current[activeSentenceIndex]?.scrollIntoView({
         behavior: "smooth",
-        block: "center", // 문장이 화면 중앙에 오도록 유지
+        block: "center",
       });
     }
   }, [activeSentenceIndex]);
@@ -311,6 +295,13 @@ export function ReadingView({ passage }: ReadingViewProps) {
           return;
         }
         window.speechSynthesis.cancel();
+        
+        // [해결 1] 재생이 시작되면, 브라우저 신호를 기다리지 않고 무조건 문장의 첫 단어를 하이라이트!
+        const firstToken = wordTokens.find(t => t.start !== undefined && t.start >= sentence.start);
+        if (firstToken?.index !== undefined) {
+          setActiveIndex(firstToken.index);
+        }
+
         const utterance = new SpeechSynthesisUtterance(sentence.text);
         utterance.lang = "en-US";
         utterance.rate = playbackRateRef.current;
@@ -319,10 +310,17 @@ export function ReadingView({ passage }: ReadingViewProps) {
         utterance.onboundary = (event) => {
           if (event.name && event.name !== "word") return;
           const absoluteIndex = sentence.start + event.charIndex;
-          const tokenIndex = startToTokenIndex.get(absoluteIndex);
-          if (tokenIndex !== undefined) {
-            setActiveIndex(tokenIndex);
-            saveReadingProgress(tokenIndex);
+          
+          // [해결 2] 오차가 발생하더라도 글자가 속한 단어 범위를 넓게 찾아냄
+          const token = wordTokens.find(
+            (t) => t.start !== undefined && 
+                   absoluteIndex >= t.start && 
+                   absoluteIndex <= t.start + t.text.length
+          );
+          
+          if (token && token.index !== undefined) {
+            setActiveIndex(token.index);
+            saveReadingProgress(token.index);
           }
         };
         utterance.onend = () => resolve();
@@ -349,7 +347,7 @@ export function ReadingView({ passage }: ReadingViewProps) {
       cancelled = true;
       stopSpeaking();
     };
-  }, [autoPlay, sentences, startToTokenIndex, saveReadingProgress, wordTokens.length]);
+  }, [autoPlay, sentences, wordTokens, saveReadingProgress]);
 
   const toggleAutoPlay = useCallback(() => {
     if (autoPlay) {
@@ -377,7 +375,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
     <div className="flex flex-col h-[calc(100vh-60px)] pb-20">
       <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
-          {/* 뒤로가기 버튼 추가 */}
           <button 
             onClick={() => router.back()} 
             className="p-2 -ml-2 rounded-full hover:bg-slate-800 text-slate-300 transition-colors"
@@ -393,7 +390,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
             >
               {passage.levelName}
             </p>
-            {/* 정제된 제목 표시 (숫자 제거) */}
             <h1 className="truncate text-lg font-bold text-slate-50">
               {cleanTitle}
             </h1>
@@ -436,13 +432,11 @@ export function ReadingView({ passage }: ReadingViewProps) {
       >
         <article className="mx-auto max-w-2xl text-lg leading-loose text-slate-200">
           
-          {/* 이미지 자리(Placeholder) 추가: 추후 실제 이미지를 넣을 수 있는 공간 */}
           <div className="w-full h-48 bg-slate-800/50 rounded-xl mb-6 flex flex-col items-center justify-center text-slate-500 border border-slate-700/50">
              <ImageIcon className="w-10 h-10 mb-2 opacity-50" />
              <span className="text-sm font-medium">Story Image Space</span>
           </div>
 
-          {/* 문장 렌더링 부분 */}
           {sentenceTokens.map((sTokens, sIdx) => {
             const isActiveSentence = sIdx === activeSentenceIndex;
             return (
@@ -453,7 +447,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
                 }}
                 className={cn(
                   "transition-all duration-300 inline rounded-lg px-2",
-                  // 현재 문장 전체에 눈에 띄는 회색 배경 박스 적용
                   isActiveSentence ? "bg-slate-700 shadow-md text-white py-1 my-1 block" : ""
                 )}
               >
@@ -476,7 +469,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
                       }
                       className={cn(
                         "reading-word inline transition-colors duration-200 cursor-pointer",
-                        // 읽고 있는 단어를 파란색과 볼드체로 강조
                         isActiveWord && "text-blue-400 font-bold" 
                       )}
                     >
