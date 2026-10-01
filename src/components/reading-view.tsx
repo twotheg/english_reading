@@ -90,9 +90,7 @@ function vibrate(pattern: number | number[] = 15) {
 export function ReadingView({ passage }: ReadingViewProps) {
   const router = useRouter();
   
-  // 제목 정제 및 이미지 파일명 자동 생성 로직
   const cleanTitle = passage.title.replace(/^\d+\.\s*/, '');
-  // 정제된 제목을 소문자로 바꾸고, 알파벳/숫자가 아닌 것은 짝대기(-)로 치환하여 .jpg를 붙임
   const imageFilename = cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.jpg';
 
   const tokens = useMemo(() => tokenize(passage.content), [passage.content]);
@@ -132,7 +130,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
   const [autoPlay, setAutoPlay] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(0.9);
   
-  // 이미지를 찾지 못했을 때를 대비한 에러 상태값
   const [imageError, setImageError] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -206,15 +203,19 @@ export function ReadingView({ passage }: ReadingViewProps) {
     }
   }, []);
 
-  const handleWordEnter = useCallback(
-    (word: string, index: number) => {
-      if (currentWordRef.current === word) return;
-      currentWordRef.current = word;
+  // [수정 핵심] 단어를 클릭하면 기존처럼 소리만 나는 게 아니라, 바로 뜻풀이 창이 뜨도록 수정!
+  const handleWordClick = useCallback(
+    (e: React.MouseEvent, word: string, index: number) => {
+      e.stopPropagation();
+      if (isDraggingRef.current) return;
       setActiveIndex(index);
-      speak(word, playbackRateRef.current);
-      clearLongPress();
+      
+      // 단어를 톡 클릭하면 바로 뜻풀이 팝업이 뜨고 팝업 안에서 소리가 납니다.
+      openDefinition(word);
+      
+      saveReadingProgress(index);
     },
-    [clearLongPress]
+    [saveReadingProgress, openDefinition]
   );
 
   const startLongPress = useCallback(
@@ -245,10 +246,15 @@ export function ReadingView({ passage }: ReadingViewProps) {
       isDraggingRef.current = false;
       const result = getWordFromPoint(e.clientX, e.clientY);
       if (!result) return;
-      handleWordEnter(result.word, result.index);
+      // 화면 터치 시 소리 내어 읽기
+      if (currentWordRef.current !== result.word) {
+        currentWordRef.current = result.word;
+        setActiveIndex(result.index);
+        speak(result.word, playbackRateRef.current);
+      }
       startLongPress(result.word);
     },
-    [getWordFromPoint, handleWordEnter, startLongPress]
+    [getWordFromPoint, startLongPress]
   );
 
   const handlePointerMove = useCallback(
@@ -256,29 +262,28 @@ export function ReadingView({ passage }: ReadingViewProps) {
       isDraggingRef.current = true;
       const result = getWordFromPoint(e.clientX, e.clientY);
       if (!result) return;
-      handleWordEnter(result.word, result.index);
+      if (currentWordRef.current !== result.word) {
+        currentWordRef.current = result.word;
+        setActiveIndex(result.index);
+        speak(result.word, playbackRateRef.current);
+      }
     },
-    [getWordFromPoint, handleWordEnter]
+    [getWordFromPoint]
   );
 
+  // [수정 핵심] 드래그가 끝날 때 발생하던 클릭 오작동 방지
   const handlePointerUp = useCallback(() => {
     clearLongPress();
-    isDraggingRef.current = false;
+    
+    // 드래그가 끝난 직후 클릭 이벤트가 실행되는 것을 막기 위해 0.1초 여유를 둠
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 100);
+
     if (activeIndex !== null) {
       saveReadingProgress(activeIndex);
     }
   }, [activeIndex, clearLongPress, saveReadingProgress]);
-
-  const handleWordClick = useCallback(
-    (e: React.MouseEvent, word: string, index: number) => {
-      e.stopPropagation();
-      if (isDraggingRef.current) return;
-      setActiveIndex(index);
-      speak(word, playbackRateRef.current);
-      saveReadingProgress(index);
-    },
-    [saveReadingProgress]
-  );
 
   useEffect(() => {
     return () => {
@@ -437,19 +442,16 @@ export function ReadingView({ passage }: ReadingViewProps) {
       >
         <article className="mx-auto max-w-2xl text-lg leading-loose text-slate-200">
           
-          {/* Beginner 레벨일 때만 이미지 영역 노출 */}
           {passage.levelName.toLowerCase() === 'beginner' && (
             <div className="w-full h-48 sm:h-64 bg-slate-800/50 rounded-xl mb-6 flex flex-col items-center justify-center text-slate-500 border border-slate-700/50 overflow-hidden relative">
               {!imageError ? (
-                /* 이미지를 정상적으로 찾았을 때 */
                 <img
                   src={`/images/${imageFilename}`}
                   alt={cleanTitle}
                   className="w-full h-full object-cover"
-                  onError={() => setImageError(true)} // 이미지가 없으면 에러 상태를 true로 변경
+                  onError={() => setImageError(true)}
                 />
               ) : (
-                /* 이미지가 아직 없거나 에러가 났을 때 보여주는 기존 Placeholder */
                 <>
                   <ImageIcon className="w-10 h-10 mb-2 opacity-50" />
                   <span className="text-sm font-medium">Story Image Space</span>
@@ -506,7 +508,8 @@ export function ReadingView({ passage }: ReadingViewProps) {
       <div className="border-t border-slate-800 bg-slate-900 px-4 py-2 text-center text-xs text-slate-500">
         <span className="inline-flex items-center gap-1">
           <Volume2 className="h-3 w-3" />
-          Drag across words to listen. Long press a word for meaning.
+          {/* 사용자가 헷갈리지 않도록 안내 문구도 변경했습니다 */}
+          Tap a word for meaning. Drag across words to listen.
         </span>
       </div>
 
@@ -519,3 +522,4 @@ export function ReadingView({ passage }: ReadingViewProps) {
     </div>
   );
 }
+
