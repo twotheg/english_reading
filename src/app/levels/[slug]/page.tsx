@@ -18,36 +18,42 @@ export default function LevelPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadMore = useCallback(async () => {
-    if (loading) return;
+  // [수정 핵심] 의존성 배열에서 loading을 제거하여 무한 루프와 상태 꼬임을 방지합니다.
+  const loadMore = useCallback(async (currentPage: number) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchPassages(slug, page, 20);
+      const result = await fetchPassages(slug, currentPage, 20);
       setData(result);
       setPassages((prev) =>
-        page === 1 ? result.passages : [...prev, ...result.passages]
+        currentPage === 1 ? result.passages : [...prev, ...result.passages]
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [slug, page, loading]);
+  }, [slug]);
 
+  // slug가 바뀔 때(초급->중급 등) 초기화하고 1페이지를 불러옵니다.
   useEffect(() => {
     setPage(1);
     setPassages([]);
-  }, [slug]);
+    loadMore(1);
+  }, [slug, loadMore]);
 
+  // [수정 핵심] page 번호가 1보다 클 때(즉, Load more 버튼을 눌렀을 때)만 데이터를 추가로 불러옵니다.
   useEffect(() => {
-    loadMore();
-  }, [loadMore]);
+    if (page > 1) {
+      loadMore(page);
+    }
+  }, [page, loadMore]);
 
   const hasMore = data ? page < data.pagination.totalPages : true;
 
   return (
-    <main className="flex min-h-screen flex-col">
+    // 하단 광고 영역(AdMob)이 버튼을 가리지 않도록 pb-20 추가
+    <main className="flex min-h-screen flex-col pb-20">
       <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <button
@@ -88,7 +94,9 @@ export default function LevelPage() {
 
           {passages.length > 0 && hasMore && (
             <button
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => {
+                if (!loading) setPage((p) => p + 1);
+              }}
               disabled={loading}
               className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 py-3 text-sm font-medium text-slate-200 transition-colors active:bg-slate-700 disabled:opacity-50"
             >
