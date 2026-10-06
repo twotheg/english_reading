@@ -4,7 +4,7 @@ import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 
 export const metadata: Metadata = {
-  title: "English 10-Minute Reader",
+  title: "ReadFlow: English Reading",
   description:
     "Level-based English 10-minute reading with touch-to-speak and long-press definitions.",
   manifest: "/manifest.json",
