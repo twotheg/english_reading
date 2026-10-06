@@ -5,11 +5,9 @@ import { eq, sql } from "drizzle-orm";
 import Parser from "rss-parser";
 
 export async function GET(request: Request) {
-  // 로컬 테스트나 브라우저에서 직접 확인할 수 있도록 Vercel 환경이 아닐 때는 인증 통과
+  // 보안 설정 (로컬 확인 및 ?key= 파라미터 허용)
   const authHeader = request.headers.get("authorization");
   if (process.env.CRON_SECRET && process.env.NODE_ENV === "production" && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    // Vercel 대시보드나 외부에서 임의 호출 시 보안 유지
-    // 단, 주소창 테스트를 위해 비밀번호 파라미터(?key=...)도 허용하도록 설정
     const { searchParams } = new URL(request.url);
     if (searchParams.get("key") !== process.env.CRON_SECRET) {
       return new Response("Unauthorized", { status: 401 });
@@ -20,12 +18,14 @@ export async function GET(request: Request) {
     const parser = new Parser();
     const feed = await parser.parseURL("http://feeds.bbci.co.uk/news/world/rss.xml");
 
-    // 고급 레벨의 ID 조회
-    const advancedLevel = await db.query.levels.findFirst({
-      where: eq(levels.slug, "advanced"),
-    });
+    // db.query 대신 seed.ts와 동일한 db.select() 문법을 사용하여 타입 에러를 해결합니다.
+    const levelRows = await db
+      .select({ id: levels.id })
+      .from(levels)
+      .where(eq(levels.slug, "advanced"))
+      .limit(1);
 
-    const levelId = advancedLevel?.id || 3;
+    const levelId = levelRows[0]?.id || 3;
 
     // 현재 고급 지문의 최대 orderIndex 확인
     const maxOrderResult = await db
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       .from(passages)
       .where(eq(passages.levelId, levelId));
     
-    let currentOrder = (maxOrderResult[0]?.maxOrder || 0) + 1;
+    let currentOrder = (Number(maxOrderResult[0]?.maxOrder) || 0) + 1;
 
     const topArticles = feed.items.slice(0, 5);
     let insertedCount = 0;
