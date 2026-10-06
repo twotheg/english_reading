@@ -8,7 +8,7 @@ const levelData = [
   {
     slug: "beginner",
     name: "Beginner",
-    description: "Simple fairy tales for starting your English reading journey.",
+    description: "Classic fairy tales & easy stories for comfortable daily reading.",
     color: "#22c55e",
     icon: "sprout",
     orderIndex: 1,
@@ -16,7 +16,7 @@ const levelData = [
   {
     slug: "intermediate",
     name: "Intermediate",
-    description: "Longer texts with richer vocabulary and more complex ideas.",
+    description: "High-quality in-depth articles on science, history, and human stories.",
     color: "#3b82f6",
     icon: "book-open",
     orderIndex: 2,
@@ -24,7 +24,7 @@ const levelData = [
   {
     slug: "advanced",
     name: "Advanced",
-    description: "Sophisticated articles on academic, professional, and abstract topics.",
+    description: "Daily curated world news & thought-provoking global columns.",
     color: "#a855f7",
     icon: "graduation-cap",
     orderIndex: 3,
