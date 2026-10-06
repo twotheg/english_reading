@@ -28,7 +28,7 @@ export default async function HomePage() {
             <BookOpenText className="h-8 w-8 text-blue-400" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white">
-            English 10-Minute Reader
+            ReadFlow: English Reading
           </h1>
           <p className="mt-2 text-base text-slate-300">
             Choose your level and read English for 10 minutes every day.
