@@ -162,7 +162,7 @@ export default function LevelPage() {
       {/* 하단 고정 애드센스 배너 (광고 Slot ID 입력 필수) */}
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-slate-950 border-t border-slate-800 flex justify-center items-center h-[70px]">
         <div className="mx-auto w-full max-w-2xl px-2">
-          <AdSenseBanner dataAdSlot="1234567890" />
+          <AdSenseBanner dataAdSlot="6277737886" />
         </div>
       </div>
     </main>
