@@ -806,7 +806,7 @@ async function seed() {
     });
   }
 
-  // 2. 중급(Intermediate) 모의고사 지문 15개 삽입
+  // 2. 중급(Intermediate) 모의고사 지문 85개 삽입
   const intermediateLevelId = levelMap.get("intermediate");
   if (intermediateLevelId) {
     intermediatePassages.forEach((passage, index) => {
@@ -815,6 +815,37 @@ async function seed() {
         levelId: intermediateLevelId,
         title: passage.title,
         content: passage.content,
+        durationMinutes: Math.max(1, Math.ceil(wordCount / 100)),
+        wordCount: wordCount,
+        orderIndex: index + 1,
+      });
+    });
+  }
+
+  // 3. 고급(Advanced) 기본 지문 3개 삽입 (배포 직후 비어있지 않도록)
+  const advancedLevelId = levelMap.get("advanced");
+  if (advancedLevelId) {
+    const initialNews = [
+      {
+        title: "Global Climate Summit Reaches Historic Agreement on Renewable Energy Transition",
+        content: "Diplomats and environmental ministers representing nearly two hundred nations have concluded intensive negotiations at the annual United Nations Climate Conference, delivering a landmark multilateral agreement designed to accelerate the global transition away from fossil fuel combustion. The final consensus document formally calls on international governments to triple global renewable energy generation capacity and double the global rate of energy efficiency improvements before the decade concludes. Economists project that realizing these aggressive technological goals will require shifting international capital flows toward grid infrastructure modernization, next-generation lithium battery energy storage facilities, and widespread carbon capture utilization systems."
+      },
+      {
+        title: "Advancements in Artificial Intelligence Spark Global Regulatory Dialogue",
+        content: "As artificial intelligence systems demonstrate increasingly sophisticated natural language reasoning and automated problem-solving capabilities, international lawmakers and technology industry leaders are convening worldwide to establish unified ethical frameworks and safety guidelines. The primary focus of modern technological governance involves addressing algorithmic bias, protecting individual intellectual property rights, and mitigating systemic economic disruptions across professional labor markets. Analysts suggest that the future of international competitiveness will depend not merely on raw algorithmic processing power, but on the ability of democratic institutions to foster technological innovation while maintaining transparent and verifiable governance structures."
+      },
+      {
+        title: "Deep-Sea Oceanographic Survey Uncovers Previously Unknown Marine Ecosystems",
+        content: "A global collaborative oceanographic expedition operating in the remote abyssal plains of the South Pacific has cataloged hundreds of previously undocumented biological organisms living in high-pressure hydrothermal environments. Utilizing unmanned robotic submersibles equipped with high-resolution stereoscopic cameras and delicate suction arms, marine scientists sampled fragile crystalline sponges, bioluminescent octopuses, and extremophilic bacterial colonies thriving along volcanic ridges. Geochemists emphasize that these pristine abyssal ecosystems provide critical insights into prebiotic molecular chemistry and illustrate the astonishing adaptability of life in the most hostile environments on Earth."
+      }
+    ];
+
+    initialNews.forEach((news, index) => {
+      const wordCount = news.content.split(/\s+/).length;
+      finalValues.push({
+        levelId: advancedLevelId,
+        title: news.title,
+        content: news.content,
         durationMinutes: Math.max(1, Math.ceil(wordCount / 100)),
         wordCount: wordCount,
         orderIndex: index + 1,
