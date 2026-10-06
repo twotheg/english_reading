@@ -31,7 +31,7 @@ export default async function HomePage() {
             ReadFlow: English Reading
           </h1>
           <p className="mt-2 text-base text-slate-300">
-            Choose your level and read English for 10 minutes every day.
+            Choose your level and read English for every day.
           </p>
           <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300">
             <Headphones className="h-3.5 w-3.5" />
