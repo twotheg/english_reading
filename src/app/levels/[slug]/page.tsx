@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { fetchPassages } from "@/lib/api";
 import type { PassageMeta, PaginatedPassages } from "@/lib/types";
 import { PassageListItem } from "@/components/passage-list-item";
+import AdSenseBanner from "@/components/adsense-banner";
 import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 
 export default function LevelPage() {
@@ -19,7 +20,6 @@ export default function LevelPage() {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // 데이터 로드
   const loadMore = useCallback(
     async (currentPage: number) => {
       setLoading(true);
@@ -51,7 +51,6 @@ export default function LevelPage() {
     }
   }, [page, loadMore]);
 
-  // [Advanced 전용] 기사 개별 삭제 처리 함수
   const handleDelete = async (e: React.MouseEvent, id: number) => {
     e.preventDefault();
     e.stopPropagation();
@@ -62,7 +61,6 @@ export default function LevelPage() {
     try {
       const res = await fetch(`/api/passages/${id}`, { method: "DELETE" });
       if (res.ok) {
-        // UI에서 즉시 제거 및 개수 차감
         setPassages((prev) => prev.filter((p) => p.id !== id));
         setData((prev) =>
           prev
@@ -89,7 +87,8 @@ export default function LevelPage() {
   const hasMore = data ? page < data.pagination.totalPages : true;
 
   return (
-    <main className="flex min-h-screen flex-col pb-20">
+    // 하단에 광고가 들어갈 공간(pb-24) 확보
+    <main className="flex min-h-screen flex-col pb-24 relative">
       <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <button
@@ -117,15 +116,12 @@ export default function LevelPage() {
               <div className="flex-1 min-w-0">
                 <PassageListItem passage={passage} />
               </div>
-
-              {/* slug가 'advanced'일 때만 휴지통 삭제 버튼을 노출합니다 */}
               {slug === "advanced" && (
                 <button
                   onClick={(e) => handleDelete(e, passage.id)}
                   disabled={deletingId === passage.id}
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-800/80 text-slate-400 transition-colors hover:bg-red-950/50 hover:text-red-400 active:scale-95 disabled:opacity-50"
                   title="기사 삭제"
-                  aria-label="Delete passage"
                 >
                   {deletingId === passage.id ? (
                     <Loader2 className="h-4 w-4 animate-spin text-red-400" />
@@ -157,15 +153,18 @@ export default function LevelPage() {
               disabled={loading}
               className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 py-3 text-sm font-medium text-slate-200 transition-colors active:bg-slate-700 disabled:opacity-50"
             >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Load more"
-              )}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load more"}
             </button>
           )}
         </div>
       </section>
+
+      {/* 하단 고정 애드센스 배너 (광고 Slot ID 입력 필수) */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-slate-950 border-t border-slate-800 flex justify-center items-center h-[70px]">
+        <div className="mx-auto w-full max-w-2xl px-2">
+          <AdSenseBanner dataAdSlot="1234567890" />
+        </div>
+      </div>
     </main>
   );
 }
