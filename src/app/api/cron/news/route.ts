@@ -4,8 +4,12 @@ import { passages, levels } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import Parser from "rss-parser";
 
+// 본문 HTML 태그 제거 함수
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>?/gm, "").replace(/&nbsp;/g, " ").trim();
+}
+
 export async function GET(request: Request) {
-  // 보안 설정 (로컬 확인 및 ?key= 파라미터 허용)
   const authHeader = request.headers.get("authorization");
   if (process.env.CRON_SECRET && process.env.NODE_ENV === "production" && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     const { searchParams } = new URL(request.url);
@@ -15,10 +19,15 @@ export async function GET(request: Request) {
   }
 
   try {
-    const parser = new Parser();
-    const feed = await parser.parseURL("http://feeds.bbci.co.uk/news/world/rss.xml");
+    const parser = new Parser({
+      customFields: {
+        item: [["content:encoded", "fullContent"]],
+      },
+    });
 
-    // db.query 대신 seed.ts와 동일한 db.select() 문법을 사용하여 타입 에러를 해결합니다.
+    // 학술·사회·과학 분야의 깊이 있는 장문 칼럼을 제공하는 피드 (The Conversation World News)
+    const feed = await parser.parseURL("https://theconversation.com/global/articles.atom");
+
     const levelRows = await db
       .select({ id: levels.id })
       .from(levels)
@@ -27,7 +36,6 @@ export async function GET(request: Request) {
 
     const levelId = levelRows[0]?.id || 3;
 
-    // 현재 고급 지문의 최대 orderIndex 확인
     const maxOrderResult = await db
       .select({ maxOrder: sql<number>`max(${passages.orderIndex})` })
       .from(passages)
@@ -35,22 +43,26 @@ export async function GET(request: Request) {
     
     let currentOrder = (Number(maxOrderResult[0]?.maxOrder) || 0) + 1;
 
-    const topArticles = feed.items.slice(0, 5);
     let insertedCount = 0;
 
-    for (const item of topArticles) {
-      if (!item.title || !item.contentSnippet) continue;
+    for (const item of feed.items) {
+      if (insertedCount >= 3) break; // 하루 3개씩 엄선
 
-      const content = item.contentSnippet.trim();
-      if (content.length < 50) continue;
+      // 전체 본문 추출 및 정리
+      const rawText = (item as any).fullContent || item.content || item.summary || "";
+      const cleanContent = stripHtml(rawText);
 
-      const wordCount = content.split(/\s+/).length;
+      const wordCount = cleanContent.split(/\s+/).length;
+
+      // 10-Minute Reader 콘셉트에 맞게 400단어 이상의 긴 호흡 지문만 선별
+      if (wordCount < 400) continue;
+
       const durationMinutes = Math.max(1, Math.ceil(wordCount / 100));
 
       await db.insert(passages).values({
         levelId: levelId,
-        title: item.title,
-        content: content,
+        title: item.title?.trim() || "In-Depth Global Analysis",
+        content: cleanContent,
         wordCount: wordCount,
         durationMinutes: durationMinutes,
         orderIndex: currentOrder++,
@@ -61,7 +73,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `성공적으로 ${insertedCount}개의 뉴스를 수집했습니다!`,
+      message: `성공적으로 장문 아티클 ${insertedCount}개를 수집했습니다!`,
     });
   } catch (error: any) {
     console.error("News fetch error:", error);
