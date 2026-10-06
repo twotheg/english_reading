@@ -1,50 +1,44 @@
-import type { Metadata, Viewport } from "next";
-import type { ReactNode } from "react";
+import type { Metadata } from "next";
+import localFont from "next/font/local";
 import "./globals.css";
-import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import Script from "next/script"; // <-- 꼭 추가되어야 합니다.
+
+const geistSans = localFont({
+  src: "./fonts/GeistVF.woff",
+  variable: "--font-geist-sans",
+  weight: "100 900",
+});
+const geistMono = localFont({
+  src: "./fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+  weight: "100 900",
+});
 
 export const metadata: Metadata = {
   title: "ReadFlow: English Reading",
-  description:
-    "Level-based English 10-minute reading with touch-to-speak and long-press definitions.",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "EngRead",
-  },
-  icons: {
-    icon: [
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: [{ url: "/icons/icon-192.png" }],
-  },
+  description: "Improve your English reading with daily fairy tales, in-depth articles, and news.",
 };
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: "#0f172a",
-};
-
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="ko">
-      {/* overscroll-none을 유지하면서 하단 광고(60px)를 위한 여백 설정 */}
-      <body className="bg-slate-950 text-slate-100 antialiased overscroll-none pb-[60px]">
-        <ServiceWorkerRegister />
-        
-        {/* 메인 콘텐츠 영역 */}
+    <html lang="en">
+      <head>
+        {/* 구글 애드센스 전역 스크립트 (회원님 ID 적용 완료) */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4424569297437395"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
+      </head>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-50`}
+      >
         {children}
-
-        {/* [추가된 부분] 앱 하단에 항상 고정되는 AdMob 광고 영역 */}
-        <div className="fixed bottom-0 left-0 w-full h-[60px] bg-slate-900 border-t border-slate-800 flex items-center justify-center z-50">
-          <p className="text-xs text-slate-500 font-medium">AdMob Banner (320x50)</p>
-          {/* 앱으로 출시할 때 실제 광고 스크립트나 네이티브 뷰가 들어갈 자리입니다. */}
-        </div>
       </body>
     </html>
   );
