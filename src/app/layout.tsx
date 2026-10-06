@@ -1,18 +1,10 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import Script from "next/script"; // <-- 꼭 추가되어야 합니다.
+import Script from "next/script";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+// 기본 내장된 구글 폰트(Inter) 사용
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "ReadFlow: English Reading",
@@ -35,9 +27,7 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-50`}
-      >
+      <body className={`${inter.className} antialiased bg-slate-950 text-slate-50`}>
         {children}
       </body>
     </html>
