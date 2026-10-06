@@ -434,6 +434,68 @@ const beginnerFairyTales = [
     content: "A young, adventurous mouse wanted to cross a wide stream to explore the other side. A sneaky frog offered to help him. 'Just tie your foot to my foot with a strong piece of grass,' said the frog. 'I will swim, and you can float safely behind me.' The mouse thought this was a brilliant idea and tied their legs together. The frog jumped into the water and began to swim. But instead of swimming across, the frog cruelly dove deep under the water, trying to drown the poor mouse so he could eat him later. The mouse struggled and fought to stay above the surface. Suddenly, a hungry hawk flying high above saw the mouse splashing in the water. The hawk swooped down, grabbed the mouse in his sharp talons, and flew high into the sky. Because they were tied together, the cruel frog was pulled up into the air along with the mouse. The hawk enjoyed a delicious double meal, and the frog realized that harming others often leads to your own destruction."
   }
 ];
+const intermediatePassages = [
+  {
+    title: "The Power of Habit Stacking",
+    content: "Building new habits can often feel overwhelming, but a psychological technique called habit stacking makes the process much simpler. Instead of trying to introduce a completely new routine into a chaotic schedule, you tie the new behavior to an already established habit. For example, if you want to cultivate a habit of reading every day, you can tell yourself: 'After I pour my morning cup of coffee, I will read one page of a book.' Because pouring coffee is already an automatic behavior, your brain easily links the new reading routine to that existing neurological pathway. Over time, small actions repeated daily compound into significant personal growth, proving that consistency matters far more than intensity."
+  },
+  {
+    title: "How Plants Communicate",
+    content: "Although plants appear motionless and silent, recent botanical research reveals that they engage in sophisticated communication beneath our feet. Through vast underground networks of fungal filaments known as mycorrhizal networks, trees and plants exchange nutrients and warning signals. When a plant is attacked by harmful pests, it can transmit chemical distress messages through the soil to neighboring plants. Upon receiving these alerts, nearby plants immediately begin producing protective chemicals, such as bitter tannins, to repel the approaching insects. This cooperative subterranean system demonstrates that forests act more like interconnected superorganisms than individual competitors struggling for survival."
+  },
+  {
+    title: "The Discovery of Penicillin",
+    content: "In 1928, a Scottish biologist named Alexander Fleming made an accidental discovery that revolutionized modern medicine. Returning from a vacation, he noticed that a petri dish containing Staphylococcus bacteria had grown a curious patch of greenish mold. Remarkably, the bacteria immediately surrounding the mold had vanished. Fleming recognized that the mold, Penicillium notatum, was producing a substance capable of destroying lethal bacteria. Although purifying the compound took more than a decade of international research, the resulting drug, penicillin, ultimately saved millions of lives during global conflicts and laid the crucial foundation for antibiotic treatments."
+  },
+  {
+    title: "Urban Farming and the Future of Food",
+    content: "As urbanization expands and global populations continue to rise, modern agriculture faces unprecedented environmental constraints. Traditional farming consumes immense amounts of arable land, fresh water, and fossil fuels for transportation. In response, urban planners and agricultural engineers are developing vertical indoor farms inside metropolitan cities. Utilizing hydroponic systems and specialized LED spectrums, these facilities grow crops without soil while recycling ninety-five percent of the water used. Because these farms operate vertically inside repurposed skyscrapers, fresh produce can be harvested year-round and delivered to city markets in hours, drastically minimizing the carbon footprint of freight transit."
+  },
+  {
+    title: "The Psychology of the Pomodoro Technique",
+    content: "Procrastination often arises not from laziness, but from anxiety regarding the perceived magnitude of a task. The Pomodoro Technique addresses this cognitive barrier by breaking work into twenty-five-minute intervals of deep focus, separated by five-minute breaks. Created by Francesco Cirillo in the late 1980s, the method trains the human mind to commit to short, manageable bursts of effort rather than hours of indefinite labor. During each interval, external distractions are strictly eliminated. Knowing that a designated rest period is only minutes away prevents mental fatigue, boosts retention, and sustains productive momentum across demanding work sessions."
+  },
+  {
+    title: "The Physics of Roller Coasters",
+    content: "Unlike automobiles or trains, roller coasters lack engines to propel them along the undulating steel track. Instead, they rely entirely on the conversion of potential energy into kinetic energy. A motorized lift hill slowly pulls the train to the highest point of the structure, maximizing its gravitational potential energy. Once the coaster crests the summit and descends, gravity converts that stored energy into rapid kinetic energy, producing immense speed. As the train races through subsequent loops and banked curves, inertia keeps passengers firmly in their seats, while controlled friction and magnetic brakes gradually bring the ride to a safe stop."
+  },
+  {
+    title: "Why Do We Dream?",
+    content: "For centuries, philosophers and scientists have debated the neurological function of dreams. Today, cognitive neuroscientists believe dreaming plays a critical role in memory consolidation and emotional regulation. During the Rapid Eye Movement (REM) stage of sleep, our brains actively process information gathered throughout the preceding waking hours, discarding extraneous details while transferring essential knowledge into long-term memory storage. Furthermore, dreams often act as a psychological simulation, allowing our neural circuits to navigate stressful scenarios safely without physical vulnerability, thereby helping individuals better handle real-world challenges."
+  },
+  {
+    title: "The Secrets of the Deep Ocean",
+    content: "Covering more than seventy percent of Earth's surface, the world's oceans remain largely unexplored frontiers. In the abyssal zone, sunlight cannot penetrate, temperatures hover just above freezing, and hydrostatic pressure is crushing. Despite these hostile conditions, bizarre organisms thrive in the darkness. Many creatures, such as the anglerfish and lanternfish, produce biological illumination called bioluminescence to attract mates or lure unsuspecting prey. Around hydrothermal vents on the ocean floor, bacteria synthesize energy from toxic minerals rather than sunlight, proving that biological life can adapt to the most extreme environments."
+  },
+  {
+    title: "The Origins of the Internet",
+    content: "The modern internet traces its origins back to a late-1960s United States military initiative known as ARPANET. Researchers aimed to develop a decentralized communication network capable of surviving regional outages. By utilizing packet-switching technology, messages were dissected into smaller electronic packets, routed across varying nodes, and reconstructed at their destination. In 1989, British engineer Tim Berners-Lee introduced the World Wide Web, linking text documents via hypertext markup language (HTML). What began as a specialized military experiment swiftly evolved into a global communications infrastructure that reshaped commerce and education."
+  },
+  {
+    title: "The Architecture of Honeycombs",
+    content: "Honeybees are remarkable natural architects whose hive structures have fascinated mathematicians for generations. Bees construct their storage combs using hexagonal geometry rather than circles, squares, or triangles. Mathematical proof demonstrates that regular hexagons provide the maximum perimeter efficiency, allowing the greatest internal volume with the minimum boundary material. Because producing beeswax requires bees to consume roughly eight grams of honey per single gram of wax, the hexagonal architecture preserves vital metabolic resources while providing maximum structural durability to store heavy honey reserves."
+  },
+  {
+    title: "Understanding Renewable Energy",
+    content: "The global transition away from fossil fuels has accelerated research into renewable energy technologies. Solar panels employ photovoltaic cells composed of silicon wafers to convert incident photons from sunlight directly into electrical current. Simultaneously, massive offshore wind turbines capture aerodynamic force to generate clean utility power. Although weather-dependent intermittency once posed severe operational challenges, modern high-capacity lithium-ion and flow battery facilities now store excess energy generated during peak production periods, releasing it steadily into the grid when consumption surges."
+  },
+  {
+    title: "How Mirrors Are Made",
+    content: "In ancient civilizations, mirrors were crafted by laboriously polishing slabs of bronze, obsidian, or silver to a reflective shine. The modern glass mirror, however, was perfected in nineteenth-century Germany through chemical silvering. Today, manufacturers coat smooth sheets of float glass with an extremely thin layer of vaporized aluminum or liquid silver on the reverse side. A protective layer of dark paint is applied over the metal to shield it from atmospheric oxidation. When light strikes the transparent glass, it passes through and bounces cleanly off the metal backing, creating an accurate reflection."
+  },
+  {
+    title: "The Intelligence of Crows",
+    content: "Corvids, the bird family that includes crows and ravens, exhibit cognitive abilities comparable to non-human primates. Laboratory experiments indicate that crows understand cause-and-effect relationships and can craft multi-step tools. In one notable study, crows modified straight pieces of wire into functional hooks to retrieve food baskets placed at the bottom of narrow tubes. They also recognize individual human faces, remembering for years whether a specific person previously posed a threat, and will vocalize warnings to teach their fledglings to avoid those individuals."
+  },
+  {
+    title: "The History of Coffee",
+    content: "Legend suggests that coffee was discovered in the ancient Ethiopian highlands by a goatherd named Kaldi. He noticed that his goats exhibited unusual vitality and refused to sleep after browsing the red berries of an unfamiliar shrub. Monks in nearby monasteries boiled the berries into a dark infusion, utilizing its stimulating properties to stay alert during prolonged midnight prayers. By the sixteenth century, the beverage spread across the Arabian Peninsula and eventually to Europe, fostering bustling coffeehouses that served as vibrant hubs for intellectual discourse, scientific debates, and political theory."
+  },
+  {
+    title: "The Impact of Plastic Pollution",
+    content: "Synthetic plastics have brought remarkable convenience to industrial manufacturing, yet their persistence in ecosystems creates severe environmental hazards. Most petroleum-based plastics do not biodegrade; instead, sunlight and mechanical friction break them down into microscopic fragments called microplastics. These toxic particles infiltrate marine food webs, accumulating inside fish and shellfish before ascending to human diets. Addressing this crisis necessitates global systemic changes, including the development of biodegradable polymers made from seaweed, improved municipal recycling infrastructure, and stringent bans on single-use packaging."
+  }
+];
 
 async function seed() {
   console.log("Seeding levels...");
@@ -445,42 +507,40 @@ async function seed() {
   console.log("Clearing existing passages...");
   await db.execute(sql`TRUNCATE TABLE passages RESTART IDENTITY CASCADE`);
 
-  console.log("Generating passages...");
-  
-  const inputs = generateAllPassages();
-  
-  const values = inputs.map((input) => {
-    const levelId = levelMap.get(input.levelSlug);
-    if (!levelId) throw new Error(`Missing level ${input.levelSlug}`);
-    
-    const built = buildPassage(input);
-    
-    return {
-      levelId,
-      title: built.title,
-      content: built.content,
-      durationMinutes: built.durationMinutes,
-      wordCount: built.wordCount,
-      orderIndex: input.orderIndex,
-      isBeginner: input.levelSlug === "beginner"
-    };
-  }).filter(v => !v.isBeginner); 
+  console.log("Preparing passages...");
+  const finalValues: any[] = [];
 
+  // 1. 초급(Beginner) 100개 동화 삽입
   const beginnerLevelId = levelMap.get("beginner");
-  beginnerFairyTales.forEach((tale, index) => {
-    const wordCount = tale.content.split(/\s+/).length;
-    values.push({
-      levelId: beginnerLevelId!,
-      title: tale.title,
-      content: tale.content, 
-      durationMinutes: Math.max(1, Math.ceil(wordCount / 100)), 
-      wordCount: wordCount,
-      orderIndex: index + 1,
-      isBeginner: true 
+  if (beginnerLevelId) {
+    beginnerFairyTales.forEach((tale, index) => {
+      const wordCount = tale.content.split(/\s+/).length;
+      finalValues.push({
+        levelId: beginnerLevelId,
+        title: tale.title,
+        content: tale.content,
+        durationMinutes: Math.max(1, Math.ceil(wordCount / 100)),
+        wordCount: wordCount,
+        orderIndex: index + 1,
+      });
     });
-  });
+  }
 
-  const finalValues = values.map(({ isBeginner, ...rest }) => rest);
+  // 2. 중급(Intermediate) 모의고사 지문 15개 삽입
+  const intermediateLevelId = levelMap.get("intermediate");
+  if (intermediateLevelId) {
+    intermediatePassages.forEach((passage, index) => {
+      const wordCount = passage.content.split(/\s+/).length;
+      finalValues.push({
+        levelId: intermediateLevelId,
+        title: passage.title,
+        content: passage.content,
+        durationMinutes: Math.max(1, Math.ceil(wordCount / 100)),
+        wordCount: wordCount,
+        orderIndex: index + 1,
+      });
+    });
+  }
 
   console.log(`Inserting ${finalValues.length} passages...`);
   const batchSize = 50;
