@@ -1,23 +1,18 @@
 import { db } from "@/db";
-import { levels, passages } from "@/db/schema";
-import { count, eq } from "drizzle-orm";
+import { levels } from "@/db/schema";
 import { LevelCard } from "@/components/level-card";
 import { BookOpenText, Headphones } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  // 지문 개수를 매번 세는 무거운 쿼리를 제거하고 레벨 정보만 빠르게 가져옵니다.
   const levelRows = await db.select().from(levels).orderBy(levels.orderIndex);
-  const counts = await db
-    .select({ levelId: passages.levelId, total: count() })
-    .from(passages)
-    .groupBy(passages.levelId);
 
-  const countMap = new Map(counts.map((c) => [c.levelId, c.total]));
-
+  // LevelCard 컴포넌트의 타입 에러 방지를 위해 기본값 0을 전달합니다.
   const levelsWithCount = levelRows.map((level) => ({
     ...level,
-    passageCount: countMap.get(level.id) ?? 0,
+    passageCount: 0,
   }));
 
   return (
