@@ -42,9 +42,6 @@ export function LevelCard({ level }: LevelCardProps) {
         <p className="mt-0.5 text-sm text-slate-400 line-clamp-2">
           {level.description}
         </p>
-        <p className="mt-1.5 text-xs font-medium" style={{ color: level.color }}>
-          {level.passageCount ?? 0} passages
-        </p>
       </div>
       <ChevronRight className="h-5 w-5 shrink-0 text-slate-600" />
     </button>
