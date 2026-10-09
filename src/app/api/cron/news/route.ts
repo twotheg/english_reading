@@ -4,12 +4,17 @@ import { passages, levels } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import Parser from "rss-parser";
 
+// [핵심 추가] Next.js가 경로를 무시하거나 캐싱하지 못하게 강제합니다.
+export const dynamic = "force-dynamic";
+
 function stripHtml(html: string) {
   return html.replace(/<[^>]*>?/gm, "").replace(/&nbsp;/g, " ").trim();
 }
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
+  
+  // 보안 검증 (크론 시크릿이 설정된 실제 배포 환경일 때만 작동)
   if (process.env.CRON_SECRET && process.env.NODE_ENV === "production" && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     const { searchParams } = new URL(request.url);
     if (searchParams.get("key") !== process.env.CRON_SECRET) {
@@ -65,7 +70,7 @@ export async function GET(request: Request) {
       insertedCount++;
     }
 
-    // [핵심] 최신 50개 기사만 유지하고 오래된 기사는 자동 삭제
+    // 최신 50개 기사만 유지하고 오래된 기사는 자동 삭제
     await db.execute(sql`
       DELETE FROM passages 
       WHERE level_id = ${levelId} 
