@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { levels } from "@/db/schema";
 import { LevelCard } from "@/components/level-card";
 import { BookOpenText, Headphones } from "lucide-react";
+import { LoginButton } from "@/components/login-button"; // 로그인 버튼 컴포넌트 불러오기
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +20,14 @@ export default async function HomePage() {
     <main className="flex min-h-screen flex-col">
       <section className="bg-gradient-to-b from-blue-900/40 to-slate-950 px-5 pb-8 pt-12">
         <div className="mx-auto max-w-2xl">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600/20">
-            <BookOpenText className="h-8 w-8 text-blue-400" />
+          {/* 책 아이콘과 로그인 버튼을 같은 줄 양쪽에 배치합니다. */}
+          <div className="mb-4 flex items-start justify-between">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600/20">
+              <BookOpenText className="h-8 w-8 text-blue-400" />
+            </div>
+            <LoginButton />
           </div>
+          
           <h1 className="text-3xl font-extrabold tracking-tight text-white">
             ReadFlow: English Reading
           </h1>
