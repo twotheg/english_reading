@@ -1,9 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-// 함수 앞에 async 추가
 export async function createClient() {
-  // cookies() 앞에 await 추가
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -14,7 +12,8 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
+        // ⭐ 여기에 타입을 명시하여 에러를 해결했습니다.
+        setAll(cookiesToSet: any[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
