@@ -10,14 +10,14 @@ export function LoginButton() {
   const supabase = createClient();
 
   useEffect(() => {
-    // 현재 로그인된 유저 정보 가져오기
+    // 1. 페이지가 로딩될 때 현재 로그인 유저 확인
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
     };
     checkUser();
 
-    // 로그인 상태가 변할 때(로그인/로그아웃) 실시간 업데이트
+    // 2. 브라우저가 직접 인증 코드(?code=...)를 감지하고 가로채서 로그인 세션을 만들어줍니다!
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null);
@@ -33,14 +33,15 @@ export function LoginButton() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${location.origin}/auth/callback`,
+        // ⭐ 핵심: 에러가 나던 callback 파일을 아예 거치지 않고 곧바로 메인 화면으로 돌아옵니다.
+        redirectTo: `${location.origin}/`,
       },
     });
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    window.location.reload(); // 로그아웃 후 화면 새로고침
+    window.location.reload(); 
   };
 
   if (user) {
@@ -58,7 +59,7 @@ export function LoginButton() {
           className="flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-700 active:scale-95"
         >
           <LogOut className="h-4 w-4" />
-          로그아웃
+          Logout
         </button>
       </div>
     );
@@ -70,7 +71,7 @@ export function LoginButton() {
       className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 active:scale-95 shadow-lg shadow-blue-900/20"
     >
       <LogIn className="h-4 w-4" />
-      구글로 로그인
+      Google Login
     </button>
   );
 }
