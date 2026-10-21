@@ -9,6 +9,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ReadFlow: English Reading",
   description: "Improve your English reading with daily fairy tales, in-depth articles, and news.",
+  manifest: "/manifest.json", // ⭐ 딱 이 한 줄만 추가하시면 됩니다!
 };
 
 export default function RootLayout({
