@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { userProgress } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm"; // ⭐ inArray 추가됨
 import { createClient } from "@/lib/supabase/server";
 
-// 1. 기록 불러오기 (GET)
 export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
@@ -13,21 +12,39 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const passageId = searchParams.get("passageId");
+  const passageIds = searchParams.get("passageIds"); // ⭐ 묶음 요청용 변수
 
-  if (!passageId) return NextResponse.json({ error: "Missing passageId" }, { status: 400 });
+  try {
+    // 여러 개를 한 번에 물어볼 때 (목록 페이지용)
+    if (passageIds) {
+      const ids = passageIds.split(',').map(Number);
+      const progresses = await db.query.userProgress.findMany({
+        where: and(
+          eq(userProgress.userId, session.user.id),
+          inArray(userProgress.passageId, ids)
+        )
+      });
+      return NextResponse.json({ progresses });
+    }
 
-  // 해당 유저가 해당 기사를 읽은 기록이 있는지 찾습니다.
-  const progress = await db.query.userProgress.findFirst({
-    where: and(
-      eq(userProgress.userId, session.user.id),
-      eq(userProgress.passageId, parseInt(passageId))
-    ),
-  });
+    // 한 개만 물어볼 때 (상세 페이지용)
+    if (passageId) {
+      const progress = await db.query.userProgress.findFirst({
+        where: and(
+          eq(userProgress.userId, session.user.id),
+          eq(userProgress.passageId, parseInt(passageId))
+        ),
+      });
+      return NextResponse.json({ progress: progress || null });
+    }
 
-  return NextResponse.json({ progress: progress || null });
+    return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+  } catch (error) {
+    console.error("DB Error:", error);
+    return NextResponse.json({ error: "Database error" }, { status: 500 });
+  }
 }
 
-// 2. 기록 저장 및 업데이트 (POST)
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
@@ -37,7 +54,6 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { passageId, scrollPosition, isRead } = body;
 
-  // 기존 기록이 있는지 확인
   const existing = await db.query.userProgress.findFirst({
     where: and(
       eq(userProgress.userId, session.user.id),
@@ -46,7 +62,6 @@ export async function POST(request: Request) {
   });
 
   if (existing) {
-    // 기록이 있으면 스크롤 위치와 읽음 상태를 업데이트 (책갈피 덮어쓰기)
     await db.update(userProgress)
       .set({ 
         scrollPosition: scrollPosition ?? existing.scrollPosition,
@@ -55,7 +70,6 @@ export async function POST(request: Request) {
       })
       .where(eq(userProgress.id, existing.id));
   } else {
-    // 기록이 없으면 새로 생성
     await db.insert(userProgress).values({
       userId: session.user.id,
       passageId,
