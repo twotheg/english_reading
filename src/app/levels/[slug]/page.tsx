@@ -129,7 +129,7 @@ export default function LevelPage() {
     }
   };
 
-  return टाइगर
+  return (
     <main className="flex min-h-screen flex-col pb-24 relative">
       <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
