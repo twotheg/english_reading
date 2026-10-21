@@ -55,7 +55,7 @@ function tokenize(text: string): Token[] {
 
 function splitSentences(text: string): Sentence[] {
   const sentences: Sentence[] = [];
-  const regex = /[^.!?]+(?:[.!?]+|$)\s*/g;
+  const regex = /[^.!?]+(?:[.!?]+|\$)\s*/g;
   let match;
   while ((match = regex.exec(text)) !== null) {
     if (match[0].trim().length === 0) continue;
@@ -203,14 +203,12 @@ export function ReadingView({ passage }: ReadingViewProps) {
     }
   }, []);
 
-  // [수정 핵심] 단어를 클릭하면 기존처럼 소리만 나는 게 아니라, 바로 뜻풀이 창이 뜨도록 수정!
   const handleWordClick = useCallback(
     (e: React.MouseEvent, word: string, index: number) => {
       e.stopPropagation();
       if (isDraggingRef.current) return;
       setActiveIndex(index);
       
-      // 단어를 톡 클릭하면 바로 뜻풀이 팝업이 뜨고 팝업 안에서 소리가 납니다.
       openDefinition(word);
       
       saveReadingProgress(index);
@@ -246,7 +244,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
       isDraggingRef.current = false;
       const result = getWordFromPoint(e.clientX, e.clientY);
       if (!result) return;
-      // 화면 터치 시 소리 내어 읽기
       if (currentWordRef.current !== result.word) {
         currentWordRef.current = result.word;
         setActiveIndex(result.index);
@@ -271,11 +268,9 @@ export function ReadingView({ passage }: ReadingViewProps) {
     [getWordFromPoint]
   );
 
-  // [수정 핵심] 드래그가 끝날 때 발생하던 클릭 오작동 방지
   const handlePointerUp = useCallback(() => {
     clearLongPress();
     
-    // 드래그가 끝난 직후 클릭 이벤트가 실행되는 것을 막기 위해 0.1초 여유를 둠
     setTimeout(() => {
       isDraggingRef.current = false;
     }, 100);
@@ -359,27 +354,34 @@ export function ReadingView({ passage }: ReadingViewProps) {
     };
   }, [autoPlay, sentences, wordTokens, saveReadingProgress]);
 
+  // ⭐ [수정 핵심] 화면 스크롤 위치를 추적하여 오디오 시작점을 맞춰주는 로직
   const toggleAutoPlay = useCallback(() => {
     if (autoPlay) {
       setAutoPlay(false);
       stopSpeaking();
     } else {
       let startSentence = 0;
-      if (activeIndex !== null) {
-        const activeToken = wordTokens.find((t) => t.index === activeIndex);
-        if (activeToken && activeToken.start !== undefined) {
-          const found = sentences.findIndex(
-            (s) =>
-              activeToken.start! >= s.start &&
-              activeToken.start! < s.start + s.text.length
-          );
-          if (found >= 0) startSentence = found;
+
+      if (containerRef.current) {
+        const containerTop = containerRef.current.getBoundingClientRect().top;
+        const offset = 20;
+
+        for (let i = 0; i < sentenceRefs.current.length; i++) {
+          const el = sentenceRefs.current[i];
+          if (el) {
+            const rect = el.getBoundingClientRect();
+            if (rect.bottom > containerTop + offset) {
+              startSentence = i;
+              break;
+            }
+          }
         }
       }
+
       autoSentenceIndexRef.current = startSentence;
       setAutoPlay(true);
     }
-  }, [autoPlay, activeIndex, wordTokens, sentences]);
+  }, [autoPlay, sentences]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-60px)] pb-20">
@@ -508,7 +510,6 @@ export function ReadingView({ passage }: ReadingViewProps) {
       <div className="border-t border-slate-800 bg-slate-900 px-4 py-2 text-center text-xs text-slate-500">
         <span className="inline-flex items-center gap-1">
           <Volume2 className="h-3 w-3" />
-          {/* 사용자가 헷갈리지 않도록 안내 문구도 변경했습니다 */}
           Tap a word for meaning. Drag across words to listen.
         </span>
       </div>
@@ -522,4 +523,3 @@ export function ReadingView({ passage }: ReadingViewProps) {
     </div>
   );
 }
-
