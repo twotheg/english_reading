@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"; // ⭐ Next.js의 악성 서버 캐시 강제 종료
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { userProgress } from "@/db/schema";
@@ -5,33 +6,33 @@ import { eq, and, inArray } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { searchParams } = new URL(request.url);
-  const passageId = searchParams.get("passageId");
-  const passageIds = searchParams.get("passageIds");
-
   try {
+    const supabase = await createClient();
+    // ⭐ 서비스 워커가 쿠키를 날려도 살 수 있도록 헤더에서 토큰 직접 추출
+    const authHeader = request.headers.get("Authorization");
+    const token = authHeader?.replace("Bearer ", "");
+    
+    const { data: { user } } = token 
+      ? await supabase.auth.getUser(token) 
+      : await supabase.auth.getUser();
+      
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { searchParams } = new URL(request.url);
+    const passageId = searchParams.get("passageId");
+    const passageIds = searchParams.get("passageIds");
+
     if (passageIds) {
       const ids = passageIds.split(',').map(Number);
       const progresses = await db.query.userProgress.findMany({
-        where: and(
-          eq(userProgress.userId, user.id),
-          inArray(userProgress.passageId, ids)
-        )
+        where: and(eq(userProgress.userId, user.id), inArray(userProgress.passageId, ids))
       });
       return NextResponse.json({ progresses });
     }
 
     if (passageId) {
       const progress = await db.query.userProgress.findFirst({
-        where: and(
-          eq(userProgress.userId, user.id),
-          eq(userProgress.passageId, parseInt(passageId))
-        ),
+        where: and(eq(userProgress.userId, user.id), eq(userProgress.passageId, parseInt(passageId))),
       });
       return NextResponse.json({ progress: progress || null });
     }
@@ -44,21 +45,22 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  // ⭐ 전체를 try-catch로 감싸서 서버 다운(401 동반)을 방지합니다.
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authHeader = request.headers.get("Authorization");
+    const token = authHeader?.replace("Bearer ", "");
     
+    const { data: { user } } = token 
+      ? await supabase.auth.getUser(token) 
+      : await supabase.auth.getUser();
+      
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
     const { passageId, scrollPosition, isRead } = body;
 
     const existing = await db.query.userProgress.findFirst({
-      where: and(
-        eq(userProgress.userId, user.id),
-        eq(userProgress.passageId, passageId)
-      ),
+      where: and(eq(userProgress.userId, user.id), eq(userProgress.passageId, passageId)),
     });
 
     if (existing) {
@@ -81,7 +83,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DB POST Error:", error);
-    // 에러 발생 시 원인을 정확히 알려주도록 변경
     return NextResponse.json({ error: "DB Insert/Update Failed" }, { status: 500 });
   }
 }
