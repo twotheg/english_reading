@@ -7,6 +7,7 @@ import type { PassageMeta, PaginatedPassages } from "@/lib/types";
 import { PassageListItem } from "@/components/passage-list-item";
 import AdSenseBanner from "@/components/adsense-banner";
 import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client"; // ⭐ 추가됨: 클라이언트에서 토큰을 가져오기 위함
 
 export default function LevelPage() {
   const params = useParams();
@@ -28,11 +29,22 @@ export default function LevelPage() {
       try {
         const result = await fetchPassages(slug, currentPage, 20);
 
-        // ⭐ 핵심: 20번 따로 묻지 않고, ID를 쉼표로 묶어서 한 번에 물어봅니다! (서버 과부하 해결)
         const ids = result.passages.map(p => p.id).join(',');
         if (ids) {
           try {
-            const progressRes = await fetch(`/api/progress?passageIds=${ids}`, { cache: "no-store" });
+            // ⭐ 핵심: 서비스 워커의 악성 캐시를 뚫고 강력한 토큰을 직접 전송합니다.
+            const supabase = createClient();
+            const { data: authData } = await supabase.auth.getSession();
+            const token = authData.session?.access_token || "";
+
+            // 시간표(&t=...)를 붙여서 항상 새로운 요청인 것처럼 속입니다.
+            const progressRes = await fetch(`/api/progress?passageIds=${ids}&t=${Date.now()}`, { 
+              headers: {
+                "Authorization": `Bearer ${token}`
+              },
+              cache: "no-store" 
+            });
+            
             if (progressRes.ok) {
               const { progresses } = await progressRes.json();
               setReadPassageIds((prev) => {
