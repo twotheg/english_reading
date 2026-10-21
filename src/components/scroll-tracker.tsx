@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { createClient } from "@/lib/supabase/client"; // ⭐ 클라이언트 추가
 
 export function ScrollTracker({ passageId }: { passageId: number }) {
   const isRestored = useRef(false);
@@ -8,9 +9,25 @@ export function ScrollTracker({ passageId }: { passageId: number }) {
   const hasReachedBottom = useRef(false);
 
   useEffect(() => {
+    const supabase = createClient();
+
+    // ⭐ 현재 로그인된 사용자의 강력한 토큰을 가져오는 함수
+    const getAuthHeaders = async () => {
+      const { data } = await supabase.auth.getSession();
+      return {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${data.session?.access_token || ""}`
+      };
+    };
+
     const fetchProgress = async () => {
       try {
-        const res = await fetch(`/api/progress?passageId=${passageId}`, { cache: "no-store" });
+        const headers = await getAuthHeaders();
+        // ⭐ &t=\${Date.now()} 를 끝에 붙여 서비스 워커의 악성 캐시를 완벽히 우회!
+        const res = await fetch(`/api/progress?passageId=${passageId}&t=${Date.now()}`, { 
+          headers,
+          cache: "no-store" 
+        });
         if (res.ok) {
           const data = await res.json();
           if (data.progress) {
@@ -37,22 +54,18 @@ export function ScrollTracker({ passageId }: { passageId: number }) {
       const currentScroll = Math.round(window.scrollY);
       const scrollHeight = document.documentElement.scrollHeight;
       const clientHeight = window.innerHeight;
-      // 바닥에 닿았는지 판별 (끝까지 읽음)
       const isBottom = (currentScroll + clientHeight >= scrollHeight - 150) || (scrollHeight <= clientHeight + 50);
 
-      if (isBottom) {
-        hasReachedBottom.current = true;
-      }
+      if (isBottom) hasReachedBottom.current = true;
 
-      // ⭐ 핵심 방어막: 스크롤을 움직이지 않았다면 서버에 신호를 절대 보내지 않음! (401 에러 및 디도스 차단)
       if (currentScroll === lastSavedScroll.current) return;
-
       lastSavedScroll.current = currentScroll;
 
       try {
+        const headers = await getAuthHeaders();
         await fetch("/api/progress", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({ 
             passageId, 
             scrollPosition: currentScroll, 
@@ -60,11 +73,10 @@ export function ScrollTracker({ passageId }: { passageId: number }) {
           }),
         });
       } catch (error) {
-        // 실패 시 조용히 무시 (다음 3초 뒤에 다시 시도)
+        // 무시
       }
-    }, 3000); // 정확히 3초에 1번만 확인하도록 제어
+    }, 3000);
 
-    // ⭐ 무한 폭격 누수를 막는 가장 중요한 청소(Cleanup) 코드
     return () => clearInterval(intervalId);
   }, [passageId]);
 
