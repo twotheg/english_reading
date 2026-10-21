@@ -8,7 +8,7 @@ import {
   timestamp,
   index,
   uniqueIndex,
-  boolean, // 추가됨: 읽음 여부(true/false)를 저장하기 위한 타입
+  boolean,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -68,8 +68,6 @@ export const words = pgTable(
   })
 );
 
-// --- [새로 추가된 테이블: 사용자 및 책갈피 정보] ---
-
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
@@ -80,14 +78,12 @@ export const users = pgTable("users", {
 
 export const userProgress = pgTable("user_progress", {
   id: serial("id").primaryKey(),
-  userId: text("user_id").notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull(), // ⭐ DB 자료형과 완벽 일치시킴
   passageId: integer("passage_id").notNull(),
   isRead: boolean("is_read").default(false),
   scrollPosition: integer("scroll_position").default(0),
   lastReadAt: timestamp("last_read_at", { mode: "date" }).defaultNow(),
 });
-
-// --------------------------------------------------
 
 export const levelsRelations = relations(levels, ({ many }) => ({
   passages: many(passages),
