@@ -8,6 +8,7 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  boolean, // 추가됨: 읽음 여부(true/false)를 저장하기 위한 타입
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -67,6 +68,27 @@ export const words = pgTable(
   })
 );
 
+// --- [새로 추가된 테이블: 사용자 및 책갈피 정보] ---
+
+export const users = pgTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  avatarUrl: text("avatar_url"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+export const userProgress = pgTable("user_progress", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  passageId: integer("passage_id").notNull(),
+  isRead: boolean("is_read").default(false),
+  scrollPosition: integer("scroll_position").default(0),
+  lastReadAt: timestamp("last_read_at", { mode: "date" }).defaultNow(),
+});
+
+// --------------------------------------------------
+
 export const levelsRelations = relations(levels, ({ many }) => ({
   passages: many(passages),
 }));
@@ -81,3 +103,7 @@ export type Passage = typeof passages.$inferSelect;
 export type NewPassage = typeof passages.$inferInsert;
 export type Word = typeof words.$inferSelect;
 export type NewWord = typeof words.$inferInsert;
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+export type UserProgress = typeof userProgress.$inferSelect;
+export type NewUserProgress = typeof userProgress.$inferInsert;
