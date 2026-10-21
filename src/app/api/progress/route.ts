@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   const supabase = await createClient();
-  // ⭐ getSession() 대신 무조건 getUser()를 사용해야 서버에서 안전하게 인증됩니다.
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -20,7 +19,7 @@ export async function GET(request: Request) {
       const ids = passageIds.split(',').map(Number);
       const progresses = await db.query.userProgress.findMany({
         where: and(
-          eq(userProgress.userId, user.id), // ⭐ session.user.id -> user.id 로 변경
+          eq(userProgress.userId, user.id),
           inArray(userProgress.passageId, ids)
         )
       });
@@ -39,44 +38,50 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
   } catch (error) {
-    console.error("DB Error:", error);
+    console.error("DB GET Error:", error);
     return NextResponse.json({ error: "Database error" }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  // ⭐ POST 요청에서도 getUser() 적용
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // ⭐ 전체를 try-catch로 감싸서 서버 다운(401 동반)을 방지합니다.
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await request.json();
-  const { passageId, scrollPosition, isRead } = body;
+    const body = await request.json();
+    const { passageId, scrollPosition, isRead } = body;
 
-  const existing = await db.query.userProgress.findFirst({
-    where: and(
-      eq(userProgress.userId, user.id),
-      eq(userProgress.passageId, passageId)
-    ),
-  });
-
-  if (existing) {
-    await db.update(userProgress)
-      .set({ 
-        scrollPosition: scrollPosition ?? existing.scrollPosition,
-        isRead: isRead ?? existing.isRead,
-        lastReadAt: new Date()
-      })
-      .where(eq(userProgress.id, existing.id));
-  } else {
-    await db.insert(userProgress).values({
-      userId: user.id,
-      passageId,
-      scrollPosition: scrollPosition ?? 0,
-      isRead: isRead ?? false,
+    const existing = await db.query.userProgress.findFirst({
+      where: and(
+        eq(userProgress.userId, user.id),
+        eq(userProgress.passageId, passageId)
+      ),
     });
-  }
 
-  return NextResponse.json({ success: true });
+    if (existing) {
+      await db.update(userProgress)
+        .set({ 
+          scrollPosition: scrollPosition ?? existing.scrollPosition,
+          isRead: isRead ?? existing.isRead,
+          lastReadAt: new Date()
+        })
+        .where(eq(userProgress.id, existing.id));
+    } else {
+      await db.insert(userProgress).values({
+        userId: user.id,
+        passageId,
+        scrollPosition: scrollPosition ?? 0,
+        isRead: isRead ?? false,
+      });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("DB POST Error:", error);
+    // 에러 발생 시 원인을 정확히 알려주도록 변경
+    return NextResponse.json({ error: "DB Insert/Update Failed" }, { status: 500 });
+  }
 }
