@@ -20,7 +20,6 @@ export default function LevelPage() {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // ⭐ 추가됨: 다 읽은 기사들의 ID를 기억하는 보관함
   const [readPassageIds, setReadPassageIds] = useState<Set<number>>(new Set());
 
   const loadMore = useCallback(
@@ -30,9 +29,9 @@ export default function LevelPage() {
       try {
         const result = await fetchPassages(slug, currentPage, 20);
 
-        // ⭐ 추가됨: 방금 불러온 20개의 기사 중 '다 읽은 기사(isRead: true)'가 있는지 서버에 물어봅니다.
         const progressPromises = result.passages.map((p) =>
-          fetch(`/api/progress?passageId=${p.id}`)
+          // ⭐ 캐시를 무시하고 최신 '읽음' 상태를 가져오도록 수정했습니다.
+          fetch(`/api/progress?passageId=${p.id}`, { cache: "no-store" })
             .then((res) => res.json())
             .then((data) => ({ id: p.id, isRead: data.progress?.isRead }))
             .catch(() => ({ id: p.id, isRead: false }))
@@ -40,7 +39,6 @@ export default function LevelPage() {
 
         const progressResults = await Promise.all(progressPromises);
         
-        // 읽은 기사 ID만 모아서 보관함(Set)에 추가합니다.
         setReadPassageIds((prev) => {
           const next = new Set(prev);
           progressResults.forEach((pr) => {
@@ -65,7 +63,7 @@ export default function LevelPage() {
   useEffect(() => {
     setPage(1);
     setPassages([]);
-    setReadPassageIds(new Set()); // 레벨이 바뀌면 읽음 기록 초기화
+    setReadPassageIds(new Set()); 
     loadMore(1);
   }, [slug, loadMore]);
 
@@ -75,17 +73,15 @@ export default function LevelPage() {
     }
   }, [page, loadMore]);
 
-  // ⭐ 추가됨: 무한 스크롤을 위한 화면 감지기 (Intersection Observer)
   const observer = useRef<IntersectionObserver | null>(null);
   const hasMore = data ? page < data.pagination.totalPages : true;
 
   const lastElementRef = useCallback(
     (node: HTMLDivElement) => {
-      if (loading) return; // 로딩 중에는 감지 중지
+      if (loading) return; 
       if (observer.current) observer.current.disconnect();
 
       observer.current = new IntersectionObserver((entries) => {
-        // 화면에 마지막 요소가 보이고, 아직 불러올 데이터가 남았다면 다음 페이지 호출
         if (entries[0].isIntersecting && hasMore) {
           setPage((prev) => prev + 1);
         }
@@ -160,9 +156,9 @@ export default function LevelPage() {
             return (
               <div 
                 key={passage.id} 
-                ref={isLastElement ? lastElementRef : null} // ⭐ 목록의 맨 마지막 요소에 감지기를 답니다
+                ref={isLastElement ? lastElementRef : null} 
                 className={`relative flex items-center gap-2 transition-all duration-300 ${
-                  isRead ? "opacity-40 grayscale" : "" // ⭐ 다 읽은 기사는 투명해지고 흑백 처리됩니다
+                  isRead ? "opacity-40 grayscale" : "" 
                 }`}
               >
                 <div className="flex-1 min-w-0">
@@ -186,7 +182,6 @@ export default function LevelPage() {
             );
           })}
 
-          {/* 첫 로딩 시 스피너 */}
           {loading && passages.length === 0 && (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -199,7 +194,6 @@ export default function LevelPage() {
             </div>
           )}
 
-          {/* ⭐ 버튼 대신 추가 데이터를 불러올 때 뜨는 스피너 (무한 스크롤용) */}
           {loading && passages.length > 0 && (
             <div className="flex justify-center py-6">
               <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
