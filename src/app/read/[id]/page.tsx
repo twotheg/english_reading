@@ -3,6 +3,7 @@ import { passages, levels } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ReadingView } from "@/components/reading-view";
 import { notFound } from "next/navigation";
+import { ScrollTracker } from "@/components/scroll-tracker"; // ⭐ 책갈피 추적기 불러오기
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,8 @@ export default async function ReadPage({
 
   return (
     <main className="h-screen">
+      {/* ⭐ 화면 맨 위에 책갈피 추적기를 숨겨둡니다. 이제 스크롤을 감시하고 위치를 서버에 저장합니다! */}
+      <ScrollTracker passageId={passage.id} />
       <ReadingView passage={passage} />
     </main>
   );
