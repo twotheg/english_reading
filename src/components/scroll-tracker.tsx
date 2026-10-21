@@ -4,12 +4,15 @@ import { useEffect, useRef } from "react";
 
 export function ScrollTracker({ passageId }: { passageId: number }) {
   const isRestored = useRef(false);
+  const lastSavedScroll = useRef(-1);
 
   useEffect(() => {
-    // 1. 페이지 접속 시 기존에 멈췄던 스크롤 위치를 서버에서 불러와 이동시킵니다.
+    // 1. 페이지 접속 시 기존 스크롤 위치 복구 (캐시 무시)
     const fetchProgress = async () => {
       try {
-        const res = await fetch(`/api/progress?passageId=${passageId}`);
+        const res = await fetch(`/api/progress?passageId=${passageId}`, { 
+          cache: "no-store" // ⭐ 무조건 최신 데이터를 가져오도록 강제합니다.
+        });
         if (res.ok) {
           const data = await res.json();
           if (data.progress?.scrollPosition && data.progress.scrollPosition > 0) {
@@ -25,36 +28,37 @@ export function ScrollTracker({ passageId }: { passageId: number }) {
 
     fetchProgress();
 
-    // 2. 유저가 스크롤을 멈추면 2초 뒤에 위치를 서버에 조용히 저장합니다.
-    let timeoutId: NodeJS.Timeout;
+    // 2. 3초마다 현재 위치 자동 저장 (회원님이 처음에 기획하신 완벽한 방식!)
+    const intervalId = setInterval(async () => {
+      if (!isRestored.current) return;
 
-    const handleScroll = () => {
-      if (!isRestored.current) return; 
+      const currentScroll = Math.round(window.scrollY);
+      const scrollHeight = document.documentElement.scrollHeight;
+      const clientHeight = window.innerHeight;
 
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(async () => {
-        const currentScroll = Math.round(window.scrollY);
-        // 화면 맨 밑바닥에 도달했는지 계산 (다 읽었는지 판단)
-        const isBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
-        
+      // ⭐ 오차 범위를 넉넉하게 잡고, 글이 너무 짧아 스크롤이 아예 없는 경우도 다 읽은 것으로 간주합니다.
+      const isBottom = 
+        (currentScroll + clientHeight >= scrollHeight - 150) || 
+        (scrollHeight <= clientHeight + 50);
+
+      // 스크롤이 움직였거나, 바닥에 닿았을 때만 서버에 전송합니다.
+      if (currentScroll !== lastSavedScroll.current || isBottom) {
+        lastSavedScroll.current = currentScroll;
+
         await fetch("/api/progress", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             passageId,
             scrollPosition: currentScroll,
-            isRead: isBottom, // 바닥에 닿으면 true(읽음 완료)로 저장
+            isRead: isBottom,
           }),
         });
-      }, 2000); 
-    };
+      }
+    }, 3000); // 3초마다 조용히 실행
 
-    window.addEventListener("scroll", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      clearTimeout(timeoutId);
-    };
+    return () => clearInterval(intervalId);
   }, [passageId]);
 
-  return null; // 백그라운드에서만 동작하므로 화면에 그리는 것은 없습니다.
+  return null;
 }
