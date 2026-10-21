@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.twotheg.readflow",
+        "sha256_cert_fingerprints": ["8A:20:B8:DD:03:50:54:AC:6F:44:1B:0C:6C:54:A0:83:75:B2:3C:D4:2F:03:04:E4:5D:FB:04:38:3D:34:9F:4D"]
+      }
+    }]
