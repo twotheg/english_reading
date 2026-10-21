@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 export function ScrollTracker({ passageId }: { passageId: number }) {
   const isRestored = useRef(false);
   const lastSavedScroll = useRef(-1);
+  const hasReachedBottom = useRef(false); // ⭐ 끝까지 읽었는지 절대 까먹지 않는 기억 장치
 
   useEffect(() => {
     const fetchProgress = async () => {
@@ -12,11 +13,15 @@ export function ScrollTracker({ passageId }: { passageId: number }) {
         const res = await fetch(`/api/progress?passageId=${passageId}`, { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
-          if (data.progress?.scrollPosition && data.progress.scrollPosition > 0) {
-            // ⭐ 핵심: 화면에 기사 글씨가 그려질 시간을 0.5초 벌어줍니다.
-            setTimeout(() => {
-              window.scrollTo({ top: data.progress.scrollPosition, behavior: "smooth" });
-            }, 500);
+          if (data.progress) {
+            // 이전에 읽었던 글이면 상태 복원
+            if (data.progress.isRead) hasReachedBottom.current = true;
+            
+            if (data.progress.scrollPosition > 0) {
+              setTimeout(() => {
+                window.scrollTo({ top: data.progress.scrollPosition, behavior: "smooth" });
+              }, 500);
+            }
           }
         }
       } catch (e) {
@@ -36,13 +41,28 @@ export function ScrollTracker({ passageId }: { passageId: number }) {
       const clientHeight = window.innerHeight;
       const isBottom = (currentScroll + clientHeight >= scrollHeight - 150) || (scrollHeight <= clientHeight + 50);
 
-      if (currentScroll !== lastSavedScroll.current || isBottom) {
-        lastSavedScroll.current = currentScroll;
+      // ⭐ 한 번이라도 바닥에 닿으면 스크롤을 다시 올려도 무조건 true 유지
+      if (isBottom) {
+        hasReachedBottom.current = true;
+      }
+
+      // ⭐ 스크롤이 이전과 1픽셀도 변하지 않았다면 전송 중지 (401 에러 및 서버 폭격 완벽 차단)
+      if (currentScroll === lastSavedScroll.current) return;
+
+      lastSavedScroll.current = currentScroll;
+
+      try {
         await fetch("/api/progress", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ passageId, scrollPosition: currentScroll, isRead: isBottom }),
+          body: JSON.stringify({ 
+            passageId, 
+            scrollPosition: currentScroll, 
+            isRead: hasReachedBottom.current // 무조건 true 또는 false가 안전하게 전송됨
+          }),
         });
+      } catch (error) {
+        // 무시
       }
     }, 3000);
 
